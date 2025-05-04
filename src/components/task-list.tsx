@@ -4,7 +4,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle, BrainCircuit } from 'lucide-react';
+import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle, BrainCircuit, Loader2 } from 'lucide-react'; // Added Loader2
 import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -23,6 +23,7 @@ interface TaskListProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   isGenerating: boolean;
+   isMutating?: boolean; // Added prop for edit/delete loading state
 }
 
 const getImportanceBadgeVariant = (importance: 'high' | 'medium' | 'low'): 'destructive' | 'secondary' | 'outline' => {
@@ -51,17 +52,19 @@ const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNo
     }
 };
 
-export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, isGenerating }: TaskListProps) {
+export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, isGenerating, isMutating = false }: TaskListProps) {
   const [editDialogOpen, setEditDialogOpen] = useState<string | null>(null); // Store ID of task being edited
 
   const handleEditSubmit = (updatedTask: Task) => {
       onEditTask(updatedTask);
-      setEditDialogOpen(null); // Close dialog
+      // Keep dialog open until mutation settles? Or close optimistically?
+      // For now, let's close it optimistically. Add error handling if needed.
+       setEditDialogOpen(null); // Close dialog
   }
 
   const handleDeleteInDialog = (taskId: string) => {
       onDeleteTask(taskId);
-      setEditDialogOpen(null); // Close dialog
+       setEditDialogOpen(null); // Close dialog
   }
 
   return (
@@ -70,13 +73,13 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
         <CardTitle className="flex items-center text-2xl"><List className="mr-2 h-6 w-6" /> Your Tasks</CardTitle>
          <Button
             onClick={onGenerateSchedule}
-            disabled={tasks.length === 0 || isGenerating}
+            disabled={tasks.length === 0 || isGenerating || isMutating} // Also disable during mutations
             variant="gradient" // Use gradient variant
             className="disabled:from-muted disabled:to-muted/80 disabled:text-muted-foreground disabled:cursor-not-allowed" // Style disabled state
          >
           {isGenerating ? (
             <>
-              <Clock className="mr-2 h-4 w-4 animate-spin" /> Generating...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
             </>
           ) : (
              <>
@@ -93,7 +96,7 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
         ) : (
           <div className="space-y-4">
             {tasks.map((task) => (
-              <Dialog key={task.id} open={editDialogOpen === task.id} onOpenChange={(isOpen) => setEditDialogOpen(isOpen ? task.id : null)}>
+              <Dialog key={task.id} open={editDialogOpen === task.id} onOpenChange={(isOpen) => !isMutating && setEditDialogOpen(isOpen ? task.id : null)}>
                  <Card className="bg-gradient-to-r from-secondary/70 to-secondary/50 shadow-md border border-border/30 transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg group">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
@@ -105,13 +108,13 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                       </div>
                       <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <DialogTrigger asChild>
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" disabled={isMutating}>
                             <Edit className="h-4 w-4" />
                             <span className="sr-only">Edit Task</span>
                           </Button>
                         </DialogTrigger>
-                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => onDeleteTask(task.id)}>
-                           <Trash2 className="h-4 w-4" />
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => onDeleteTask(task.id)} disabled={isMutating}>
+                           {isMutating && editDialogOpen === task.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                            <span className="sr-only">Delete Task</span>
                          </Button>
                       </div>
@@ -123,6 +126,7 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                       </Badge>
                       <span className="flex items-center"><Clock className="mr-1 h-3.5 w-3.5" /> {task.estimatedTime} min</span>
                       {task.deadline && (
+                         // Ensure deadline is parsed correctly before formatting
                         <span className="flex items-center"><CalendarDays className="mr-1 h-3.5 w-3.5" /> {format(parseISO(task.deadline), 'MMM d, yyyy')}</span>
                       )}
                     </div>
@@ -134,9 +138,11 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                     <DialogTitle className="text-xl">Edit Task</DialogTitle>
                   </DialogHeader>
                   <TaskForm
-                    onSubmit={handleEditSubmit} // Use specific handler for edit
-                    onDelete={handleDeleteInDialog} // Use specific handler for delete within dialog
+                    onSubmit={handleEditSubmit}
+                    onDelete={handleDeleteInDialog}
                     initialData={task}
+                     isSubmitting={isMutating && editDialogOpen === task.id} // Pass submitting state for the specific form
+                     isDeleting={isMutating && editDialogOpen === task.id} // Pass deleting state
                   />
                 </DialogContent>
               </Dialog>

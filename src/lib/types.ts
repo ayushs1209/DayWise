@@ -1,5 +1,5 @@
-
 import { z } from 'zod';
+import type { Timestamp } from 'firebase/firestore'; // Import Timestamp type
 
 // Define Zod schemas directly in this file
 export const SuggestOptimalScheduleInputSchema = z.object({
@@ -8,36 +8,33 @@ export const SuggestOptimalScheduleInputSchema = z.object({
       z.object({
         name: z.string().describe('The name of the task.'),
         description: z.string().optional().describe('A description of the task.'),
-        deadline: z.string().optional().describe('The deadline for the task (e.g., YYYY-MM-DDTHH:MM:SSZ).'),
+        deadline: z.string().datetime({ offset: true }).optional().describe('The deadline for the task as ISO 8601 string (e.g., YYYY-MM-DDTHH:MM:SSZ).'), // Expect ISO string
         importance: z
           .enum(['high', 'medium', 'low'])
           .default('medium')
           .describe('The importance of the task.'),
-        estimatedTime: z.number().int().min(1).describe('Estimated time in minutes to complete the task.'), // Ensure integer and min 1
+        estimatedTime: z.number().int().min(1).describe('Estimated time in minutes to complete the task.'),
       })
     )
-    .min(1) // Ensure at least one task
+    .min(1)
     .describe('A list of tasks to schedule.'),
 });
 
 export const ScheduleItemSchema = z.object({
       id: z.string().optional(), // Optional ID for client-side usage, not expected from AI
       name: z.string().describe('The name of the task.'),
-      startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Expected HH:MM format").describe('The start time for the task (e.g., HH:MM).'), // Add regex validation
-      endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Expected HH:MM format").describe('The end time for the task (e.g., HH:MM).'), // Add regex validation
+      startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Expected HH:MM format").describe('The start time for the task (e.g., HH:MM).'),
+      endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Expected HH:MM format").describe('The end time for the task (e.g., HH:MM).'),
 });
 
 export const SuggestOptimalScheduleOutputSchema = z.object({
-  schedule: z.array(ScheduleItemSchema), // Use the refined ScheduleItemSchema
+  schedule: z.array(ScheduleItemSchema),
   isPossible: z.boolean().describe('Whether it is possible to schedule all tasks within a single day.'),
 }).refine(data => {
-    // If possible, ensure schedule is not empty unless it's explicitly meant to be.
-    // This prevents AI returning isPossible=true with an empty schedule erroneously.
-    // However, allow empty schedule if isPossible is false.
     return !data.isPossible || data.schedule.length > 0 || !data.isPossible;
 }, {
     message: "If scheduling is possible, the schedule array should not be empty.",
-    path: ["schedule"], // Point error to schedule field
+    path: ["schedule"],
 });
 
 
@@ -45,14 +42,20 @@ export const SuggestOptimalScheduleOutputSchema = z.object({
 export type SuggestOptimalScheduleInput = z.infer<typeof SuggestOptimalScheduleInputSchema>;
 export type SuggestOptimalScheduleOutput = z.infer<typeof SuggestOptimalScheduleOutputSchema>;
 
-// Extract the inner task type from the SuggestOptimalScheduleInputSchema
-export type TaskWithoutId = SuggestOptimalScheduleInput['tasks'][number];
-export type Task = TaskWithoutId & { id: string }; // Add an ID for client-side list management
+// Task type used ONLY for AI input (no ID or Firestore fields)
+export type TaskForAI = SuggestOptimalScheduleInput['tasks'][number];
 
-// Extract the inner schedule item type from the SuggestOptimalScheduleOutputSchema
+// Base Task type derived from AI input schema, used for form data
+export type TaskWithoutId = TaskForAI;
+
+// Full Task type including client-side ID and Firestore fields
+export type Task = TaskWithoutId & {
+    id: string;
+    userId?: string; // Added optional userId
+    createdAt?: Timestamp | Date | string; // Allow Timestamp, Date, or string representation
+    updatedAt?: Timestamp | Date | string; // Allow Timestamp, Date, or string representation
+ };
+
+
 export type ScheduleItem = z.infer<typeof ScheduleItemSchema>;
-
-// Schedule type is the same as the output schema type
 export type Schedule = SuggestOptimalScheduleOutput;
- 
-    

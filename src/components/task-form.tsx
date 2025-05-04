@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { format } from "date-fns";
-import { Plus, Trash2, Save, CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, Save, CalendarIcon, Loader2 } from 'lucide-react'; // Added Loader2
 
 import { Button } from '@/components/ui/button';
 import {
@@ -34,11 +34,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { Task, TaskWithoutId } from '@/lib/types';
 
+// Allow deadline to be null or undefined initially, handle conversion in submit
 const taskFormSchema = z.object({
   id: z.string().optional(), // Optional for new tasks
   name: z.string().min(1, { message: 'Task name is required.' }).max(100, {message: 'Task name too long.'}),
   description: z.string().max(500, {message: 'Description too long.'}).optional(),
-  deadline: z.date().optional(),
+  deadline: z.date().nullable().optional(), // Allow null for clearing date
   importance: z.enum(['high', 'medium', 'low']).default('medium'),
   estimatedTime: z.coerce
     .number({ invalid_type_error: "Must be a number" })
@@ -47,21 +48,26 @@ const taskFormSchema = z.object({
     .max(1440, { message: 'Est. time cannot exceed 1 day (1440 min).'}),
 });
 
+
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 interface TaskFormProps {
-  onSubmit: (task: Task | TaskWithoutId) => void; // Accept Task or TaskWithoutId
+  onSubmit: (task: Task | TaskWithoutId) => void;
   onDelete?: (taskId: string) => void;
   initialData?: Task | null;
+  isSubmitting?: boolean; // Added prop
+  isDeleting?: boolean; // Optional: if delete has separate loading state
 }
 
-export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
+export function TaskForm({ onSubmit, onDelete, initialData, isSubmitting = false, isDeleting = false }: TaskFormProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: initialData
       ? {
           ...initialData,
+          // Ensure deadline from DB (ISO string or undefined) is converted to Date or undefined for the form
           deadline: initialData.deadline ? new Date(initialData.deadline) : undefined,
+          description: initialData.description ?? '', // Ensure description is '' if undefined/null
         }
       : {
           name: '',
@@ -72,29 +78,32 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
         },
   });
 
-  const handleFormSubmit = (values: TaskFormValues) => {
+   const handleFormSubmit = (values: TaskFormValues) => {
+    // Convert form values to the format needed for Firestore/AI
     const taskData: TaskWithoutId = {
       name: values.name,
-      description: values.description || undefined, // Ensure optional fields are undefined if empty
+      description: values.description || undefined,
+      // Convert Date back to ISO string or keep as undefined
       deadline: values.deadline ? values.deadline.toISOString() : undefined,
       importance: values.importance,
-      estimatedTime: values.estimatedTime, // Already coerced to number by Zod
+      estimatedTime: values.estimatedTime,
     };
 
-    if (initialData) {
-      const taskToSubmit: Task = { ...taskData, id: initialData.id };
-      onSubmit(taskToSubmit);
-    } else {
-      onSubmit(taskData); // Submit TaskWithoutId for new tasks
-       form.reset({ // Reset form only if it's a new task
-        name: '',
-        description: '',
-        deadline: undefined,
-        importance: 'medium',
-        estimatedTime: 30,
-      });
-    }
-  };
+
+     if (initialData?.id) {
+       onSubmit({ ...taskData, id: initialData.id }); // Pass Task with id for editing
+     } else {
+       onSubmit(taskData); // Pass TaskWithoutId for adding
+        form.reset({ // Reset form only if it's a new task
+            name: '',
+            description: '',
+            deadline: undefined,
+            importance: 'medium',
+            estimatedTime: 30,
+        });
+     }
+   };
+
 
   return (
     <Form {...form}>
@@ -106,7 +115,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             <FormItem>
               <FormLabel>Task Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Finish quarterly report" {...field} />
+                <Input placeholder="e.g., Finish quarterly report" {...field} disabled={isSubmitting || isDeleting}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -119,7 +128,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Add key details, links, or notes..." {...field} value={field.value ?? ''} rows={3} />
+                <Textarea placeholder="Add key details, links, or notes..." {...field} value={field.value ?? ''} rows={3} disabled={isSubmitting || isDeleting}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -141,6 +150,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                             "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
                           )}
+                          disabled={isSubmitting || isDeleting}
                         >
                           {field.value ? (
                             format(field.value, "PPP")
@@ -154,10 +164,10 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
+                      selected={field.value ?? undefined} // Pass undefined if null/undefined
+                      onSelect={(date) => field.onChange(date ?? null)} // Allow deselecting date
                       disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                        date < new Date(new Date().setHours(0, 0, 0, 0)) || isSubmitting || isDeleting
                       }
                       initialFocus
                     />
@@ -173,7 +183,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Importance</FormLabel>
-                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+                 <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting || isDeleting}>
                    <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select importance level" />
@@ -196,8 +206,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Est. Time (min)</FormLabel>
                 <FormControl>
-                  {/* Ensure field.value is handled correctly, especially on reset */}
-                  <Input type="number" placeholder="e.g., 60" {...field} value={field.value ?? ''} min="1" max="1440"/>
+                  <Input type="number" placeholder="e.g., 60" {...field} value={field.value ?? ''} min="1" max="1440" disabled={isSubmitting || isDeleting}/>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -212,17 +221,18 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                 onClick={() => onDelete(initialData.id)}
                 size="icon"
                 className="shadow-md transition-all duration-200 hover:shadow-lg active:scale-95"
+                 disabled={isSubmitting || isDeleting} // Disable delete during other ops
               >
-                <Trash2 className="h-4 w-4"/>
+                 {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4"/>}
                 <span className="sr-only">Delete Task</span>
               </Button>
           )}
           <Button
             type="submit"
-            variant="gradient" // Use gradient variant
-            disabled={form.formState.isSubmitting} // Disable during submission
+            variant="gradient"
+            disabled={isSubmitting || isDeleting} // Disable during submission or deletion
             >
-             {initialData ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : (initialData ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />)}
              {initialData ? 'Save Changes' : 'Add Task'}
           </Button>
         </div>
