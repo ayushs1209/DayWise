@@ -15,7 +15,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  useFormField, // Import useFormField
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -124,53 +123,43 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
            <FormField
             control={form.control}
             name="deadline"
-            render={({ field }) => {
-               const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // Get props from hook
-               return (
-                <FormItem className="flex flex-col justify-end"> {/* Align label better */}
-                    <FormLabel>Deadline (Optional)</FormLabel>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        {/* Apply form attributes directly to the Button, remove FormControl wrapper */}
+            render={({ field }) => (
+              <FormItem className="flex flex-col justify-end"> {/* Align label better */}
+                <FormLabel>Deadline (Optional)</FormLabel>
+                 <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
                         <Button
-                            ref={field.ref} // Pass the ref from the field
-                            id={formItemId}
-                            aria-invalid={!!error}
-                            aria-describedby={
-                                !error
-                                ? `${formDescriptionId}`
-                                : `${formDescriptionId} ${formMessageId}`
-                            }
-                            variant={"outline"}
-                            className={cn(
+                          variant={"outline"}
+                          className={cn(
                             "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
-                            )}
+                          )}
                         >
-                            {field.value ? (
+                          {field.value ? (
                             format(field.value, "PPP")
-                            ) : (
+                          ) : (
                             <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange} // Controller updates the form state here
-                            disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
-                            }
-                            initialFocus
-                        />
-                        </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                    </FormItem>
-                )
-            }}
+                      </FormControl>
+                    </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
           />
           <FormField
             control={form.control}
@@ -178,8 +167,8 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Importance</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
+                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select importance level" />
                     </SelectTrigger>
