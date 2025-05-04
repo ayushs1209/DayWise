@@ -30,10 +30,18 @@ export const ScheduleItemSchema = z.object({
 export const SuggestOptimalScheduleOutputSchema = z.object({
   schedule: z.array(ScheduleItemSchema),
   isPossible: z.boolean().describe('Whether it is possible to schedule all tasks within a single day.'),
+  error: z.string().optional().describe('An error message if generation failed.'), // Added optional error field
 }).refine(data => {
-    return !data.isPossible || data.schedule.length > 0 || !data.isPossible;
+    // If scheduling is possible OR there's an error, the schedule array can be empty or populated.
+    // If scheduling is *not* possible AND there's *no* error, the schedule array *must* be empty.
+    // This refine logic might need adjustment based on exact AI behavior on failure vs impossibility.
+    // Let's simplify: If !isPossible and !error, schedule must be empty.
+     if (!data.isPossible && !data.error) {
+         return data.schedule.length === 0;
+     }
+     return true; // Otherwise, allow any schedule content (empty or not)
 }, {
-    message: "If scheduling is possible, the schedule array should not be empty.",
+    message: "If scheduling is impossible and there is no error, the schedule array must be empty.",
     path: ["schedule"],
 });
 
@@ -58,4 +66,5 @@ export type Task = TaskWithoutId & {
 
 
 export type ScheduleItem = z.infer<typeof ScheduleItemSchema>;
+// Update Schedule type to include optional error
 export type Schedule = SuggestOptimalScheduleOutput;

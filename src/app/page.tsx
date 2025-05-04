@@ -17,7 +17,7 @@ import type {
     SuggestOptimalScheduleOutput,
     TaskWithoutId
 } from '@/lib/types';
-import { BrainCircuit, User as UserIconImport, Loader2, Ghost, LogIn as LogInIcon } from 'lucide-react'; // Renamed imports to avoid conflicts
+import { BrainCircuit, User as UserIconImport, Loader2, Ghost, LogIn as LogInIcon, Link as LinkIcon } from 'lucide-react'; // Renamed imports to avoid conflicts
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/context/auth-context'; // Import authentication hook
 import { AuthModal } from '@/components/auth-modal'; // Import authentication modal
@@ -137,7 +137,7 @@ export default function Home() {
              queryClient.setQueryData<Task[]>(
                 ['tasks', variables.userId],
                  (oldTasks = []) => oldTasks.map(task =>
-                    task.id === context.optimisticTask.id ? data : task // Use the 'data' returned by addTask
+                    task.id === context.optimisticTask.id ? { ...data, id: data.id } : task // Ensure the server ID is used
                  )
             );
         } else {
@@ -258,7 +258,9 @@ export default function Home() {
         setSchedule(null);
         return;
      }
-     editTaskMutation.mutate({ userId: user.uid, task: updatedTask });
+     // Ensure task has the correct userId before mutation
+     const taskWithUserId = { ...updatedTask, userId: user.uid };
+     editTaskMutation.mutate({ userId: user.uid, task: taskWithUserId });
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -275,26 +277,7 @@ export default function Home() {
   };
 
   const handleGenerateSchedule = async () => {
-    // AI Schedule generation might still require login depending on requirements,
-    // but could potentially work with local tasks if the AI flow doesn't need user context.
-    // For now, keep the login check for generation.
-    if (!user && tasks.length > 0) { // Allow generation if guest has local tasks, but prompt to save
-       toast({
-           title: "Generate Schedule?",
-           description: "AI Schedule generated from local tasks. Sign in to save tasks & schedules.",
-           action: (
-                <Button variant="outline" size="sm" onClick={() => setIsAuthModalOpen(true)}>
-                    Sign In
-                </Button>
-            ),
-       });
-       // Proceed with generation using local tasks
-    } else if (!user && tasks.length === 0) {
-         toast({ title: "No Tasks", description: "Add some tasks before generating a schedule.", variant: "destructive" });
-         return;
-    }
-
-
+    // Allow generation for guests with local tasks
     if (tasks.length === 0) {
       toast({ title: "No Tasks", description: "Add some tasks before generating a schedule.", variant: "destructive" });
       return;
@@ -310,18 +293,33 @@ export default function Home() {
 
     try {
       const result: SuggestOptimalScheduleOutput = await suggestOptimalSchedule(aiInput);
-      setSchedule(result);
-       if (result.isPossible && result.schedule.length > 0) {
+      setSchedule(result); // Set schedule data, including potential errors from AI
+
+       if (result.error) {
+           toast({ title: "AI Error", description: result.error, variant: "destructive" });
+       } else if (result.isPossible && result.schedule.length > 0) {
          toast({ title: "Schedule Generated", description: "Your optimal schedule is ready!" });
+          if (!user) { // Prompt guest to sign in if generation was successful
+              toast({
+                  title: "Sign In to Save",
+                  description: "Your schedule is generated. Sign in to save your tasks and schedules.",
+                  action: (
+                      <Button variant="outline" size="sm" onClick={() => setIsAuthModalOpen(true)}>
+                          Sign In
+                      </Button>
+                  ),
+              });
+          }
        } else if (!result.isPossible) {
            toast({ title: "Scheduling Conflict", description: "Could not fit all tasks in one day.", variant: "destructive" });
        } else {
             toast({ title: "Schedule Empty", description: "No tasks were scheduled.", variant: "default"});
        }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating schedule:', error);
-      toast({ title: "AI Error", description: "Failed to generate schedule. Please try again.", variant: "destructive" });
-       setSchedule(null);
+       // Set error state in the schedule object
+      setSchedule({ schedule: [], isPossible: false, error: "Failed to generate schedule. Please try again." });
+       // Removed redundant toast here, error is displayed in ScheduleDisplay
     } finally {
       setIsGenerating(false);
     }
@@ -417,4 +415,3 @@ export default function Home() {
     </div>
   );
 }
-

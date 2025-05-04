@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from '@/components/ui/button';
-import { Clock, AlertTriangle, Edit, Save } from 'lucide-react';
+import { Clock, AlertTriangle, Edit, Save, XCircle } from 'lucide-react'; // Added XCircle
 import type { ScheduleItem, Schedule } from '@/lib/types';
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -46,12 +46,13 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
         })),
       });
     } else {
-      setEditableSchedule(null);
+      // Reset if scheduleData is null or doesn't have a schedule array (e.g., only error)
+      setEditableSchedule(scheduleData); // Keep potential error message
     }
   }, [scheduleData]);
 
   const handleEditSave = (updatedItem: EditableScheduleItem) => {
-    if (!editableSchedule) return;
+    if (!editableSchedule || !editableSchedule.schedule) return; // Ensure schedule array exists
 
     const newSchedule = editableSchedule.schedule.map(item =>
       item.id === updatedItem.id ? updatedItem : item
@@ -95,6 +96,20 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
     );
   }
 
+  // Check for explicit error in scheduleData first
+  if (scheduleData.error) {
+    return (
+        <Alert variant="destructive" className="shadow-lg backdrop-blur-sm border-destructive/70">
+            <XCircle className="h-5 w-5" /> {/* Using XCircle for general error */}
+            <AlertTitle className="text-lg">Failed to Generate Schedule</AlertTitle>
+            <AlertDescription>
+            {scheduleData.error}
+            </AlertDescription>
+      </Alert>
+    );
+  }
+
+
   // Use editableSchedule for rendering and checking possibility/length after initial load
   if (!editableSchedule) {
      // This case might occur briefly between scheduleData updating and editableSchedule initializing
@@ -114,12 +129,12 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
     );
   }
 
-  if (editableSchedule.schedule.length === 0) {
+  if (!editableSchedule.schedule || editableSchedule.schedule.length === 0) {
     return (
        <Card className="border-dashed border-muted-foreground/40 bg-card/60 backdrop-blur-sm shadow-lg">
         <CardContent className="p-8 text-center text-muted-foreground">
           <Clock className="mx-auto mb-3 h-10 w-10 text-primary/80" />
-          <p className="text-lg">No tasks were scheduled. This might happen if the total estimated time is very short.</p>
+          <p className="text-lg">No tasks were scheduled. This might happen if the total estimated time is very short or due to other constraints.</p>
         </CardContent>
       </Card>
     );
@@ -178,5 +193,3 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
     </Card>
   );
 }
- 
-    
