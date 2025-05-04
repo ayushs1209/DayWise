@@ -119,7 +119,9 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             render={({ field }) => (
               <FormItem className="flex flex-col justify-end"> {/* Align label better */}
                 <FormLabel>Deadline (Optional)</FormLabel>
-                <DatePicker date={field.value} setDate={field.onChange} />
+                <FormControl>
+                  <DatePicker date={field.value} setDate={field.onChange} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
