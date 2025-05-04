@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"; // Import useToast hook
 import { suggestOptimalSchedule } from '@/ai/flows/suggest-optimal-schedule';
 import type { Task, Schedule, SuggestOptimalScheduleInput, SuggestOptimalScheduleOutput } from '@/lib/types';
 import { BrainCircuit } from 'lucide-react'; // Import BrainCircuit for AI features
+import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
 
 
 export default function Home() {
@@ -106,17 +107,20 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-secondary">
-      <header className="bg-primary text-primary-foreground shadow-md">
+    <div className="min-h-screen bg-background text-foreground"> {/* Updated bg-secondary to bg-background */}
+      <header className="bg-primary/80 backdrop-blur-sm text-primary-foreground shadow-md sticky top-0 z-50"> {/* Adjusted header background */}
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">DayWise</h1>
-           <BrainCircuit className="h-6 w-6" />
+          <div className="flex items-center gap-2">
+             <BrainCircuit className="h-6 w-6" />
+             <h1 className="text-2xl font-bold">DayWise</h1>
+          </div>
+          <ThemeToggle /> {/* Add ThemeToggle button */}
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
-          <Card className="shadow-lg">
+          <Card className="shadow-lg bg-card/80 backdrop-blur-sm"> {/* Adjusted card background */}
             <CardHeader>
               <CardTitle>Add a New Task</CardTitle>
             </CardHeader>

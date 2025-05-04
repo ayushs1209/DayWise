@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans';
 // Removed GeistMono import as it's not found
 import './globals.css';
 import { cn } from '@/lib/utils'; // Import cn utility
+import { ThemeProvider } from '@/components/theme-provider'; // Import ThemeProvider
 
 export const metadata: Metadata = {
   title: 'DayWise - Plan Your Day', // Updated Title
@@ -22,8 +23,15 @@ export default function RootLayout({
           GeistSans.variable, // Use variable directly
           // Removed GeistMono.variable
         )}
-      >{/* Removed whitespace between html and body */}
-        {children}
+      >
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false} // Disable system preference to default to dark
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
       </body>
     </html>
   );

@@ -41,7 +41,7 @@ const getImportanceBadgeVariant = (importance: 'high' | 'medium' | 'low'): 'dest
 const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNode => {
     switch (importance) {
         case 'high':
-        return <AlertCircle className="mr-1 h-3 w-3 text-destructive" />;
+        return <AlertCircle className="mr-1 h-3 w-3 text-destructive-foreground dark:text-destructive-foreground" />; // Ensure icon contrast in dark destructive
         case 'medium':
         return <CheckCircle className="mr-1 h-3 w-3 text-secondary-foreground" />;
         case 'low':
@@ -54,7 +54,7 @@ const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNo
 export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, isGenerating }: TaskListProps) {
 
   return (
-    <Card>
+    <Card className="bg-card/80 backdrop-blur-sm shadow-lg"> {/* Adjusted card background */}
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center"><List className="mr-2 h-5 w-5" /> Your Tasks</CardTitle>
         <Button onClick={onGenerateSchedule} disabled={tasks.length === 0 || isGenerating}>
@@ -68,7 +68,7 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
           <div className="space-y-4">
             {tasks.map((task) => (
               <Dialog key={task.id}>
-                <Card className="bg-card shadow-sm hover:shadow-md transition-shadow">
+                <Card className="bg-secondary/60 shadow-sm hover:shadow-md transition-shadow"> {/* Adjusted item card background */}
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
@@ -84,7 +84,7 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                             <span className="sr-only">Edit Task</span>
                           </Button>
                         </DialogTrigger>
-                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task.id)}>
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90" onClick={() => onDeleteTask(task.id)}> {/* Adjusted hover color */}
                            <Trash2 className="h-4 w-4" />
                            <span className="sr-only">Delete Task</span>
                          </Button>
@@ -103,7 +103,7 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                   </CardContent>
                 </Card>
 
-                <DialogContent>
+                <DialogContent className="bg-card/95 backdrop-blur-sm"> {/* Adjusted dialog background */}
                   <DialogHeader>
                     <DialogTitle>Edit Task</DialogTitle>
                   </DialogHeader>

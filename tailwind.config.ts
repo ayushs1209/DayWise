@@ -50,22 +50,28 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			},
-  			sidebar: {
-  				DEFAULT: 'hsl(var(--sidebar-background))',
-  				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-  				accent: 'hsl(var(--sidebar-accent))',
-  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-  				border: 'hsl(var(--sidebar-border))',
-  				ring: 'hsl(var(--sidebar-ring))'
-  			}
+            // Sidebar colors now correctly use the CSS variables defined in globals.css
+            sidebar: {
+                DEFAULT: 'hsl(var(--sidebar-background))',
+                foreground: 'hsl(var(--sidebar-foreground))',
+                primary: 'hsl(var(--sidebar-primary))',
+                'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+                accent: 'hsl(var(--sidebar-accent))',
+                'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+                border: 'hsl(var(--sidebar-border))',
+                ring: 'hsl(var(--sidebar-ring))',
+            },
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
+        backgroundImage: { // Add gradient support if needed elsewhere
+          'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+          'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+          'gradient-primary': 'linear-gradient(145deg, hsl(var(--background-start-hsl)), hsl(var(--background-end-hsl)))', // Example gradient using new variables
+        },
   		keyframes: {
   			'accordion-down': {
   				from: {

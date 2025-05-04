@@ -8,77 +8,81 @@ body {
 
 @layer base {
   :root {
-    /* Light Theme */
+    /* Light Theme (Default) - kept for reference and theme switching */
     --background: 0 0% 100%; /* White */
     --foreground: 240 10% 3.9%; /* Near Black */
-    --card: 0 0% 98%; /* Very Light Gray - closer to white than #E0E0E0 */
+    --card: 0 0% 98%; /* Very Light Gray */
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-    --primary: 207 88% 70%; /* Calm Blue (#64B5F6) */
-    --primary-foreground: 210 40% 5%; /* Darker text for better contrast on calm blue */
-    --secondary: 0 0% 96.1%; /* Default ShadCN Light Gray */
+    --primary: 207 88% 70%; /* Calm Blue */
+    --primary-foreground: 210 40% 5%; /* Darker text */
+    --secondary: 0 0% 96.1%; /* Light Gray */
     --secondary-foreground: 240 5.9% 10%;
     --muted: 0 0% 96.1%;
     --muted-foreground: 240 3.8% 46.1%;
-    --accent: 174 63% 40%; /* Teal (#26A69A) */
-    --accent-foreground: 355.7 100% 97.3%; /* Near White text for contrast on teal */
+    --accent: 174 63% 40%; /* Teal */
+    --accent-foreground: 355.7 100% 97.3%; /* Near White text */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%; /* Light Gray (#E0E0E0) as border */
-    --input: 0 0% 89.8%; /* Light Gray (#E0E0E0) as input background */
-    --ring: 207 88% 70%; /* Calm Blue for focus rings */
+    --border: 0 0% 89.8%; /* Light Gray */
+    --input: 0 0% 89.8%; /* Light Gray */
+    --ring: 207 88% 70%; /* Calm Blue */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    /* Sidebar variables kept for light theme */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 207 88% 70%; /* Use primary color for sidebar primary */
-    --sidebar-primary-foreground: 210 40% 5%; /* Use primary foreground */
-    --sidebar-accent: 174 63% 40%; /* Use accent color for sidebar accent */
-    --sidebar-accent-foreground: 355.7 100% 97.3%; /* Use accent foreground */
-    --sidebar-border: 0 0% 89.8%; /* Use border color */
-    --sidebar-ring: 207 88% 70%; /* Use primary color for ring */
+    --sidebar-primary: 207 88% 70%;
+    --sidebar-primary-foreground: 210 40% 5%;
+    --sidebar-accent: 174 63% 40%;
+    --sidebar-accent-foreground: 355.7 100% 97.3%;
+    --sidebar-border: 0 0% 89.8%;
+    --sidebar-ring: 207 88% 70%;
   }
 
   .dark {
-    /* Dark Theme (Derived) */
-    --background: 240 10% 3.9%; /* Near Black */
+    /* Dark Theme with Gradients */
+    --background-start-hsl: 240 10% 8%; /* Dark Blue/Gray Start */
+    --background-end-hsl: 260 15% 5%; /* Dark Purple/Black End */
+    --background: linear-gradient(145deg, hsl(var(--background-start-hsl)), hsl(var(--background-end-hsl))); /* Gradient Background */
     --foreground: 0 0% 98%; /* Near White */
-    --card: 240 5.9% 10%; /* Dark Gray */
+    --card: 240 6% 12%; /* Slightly Lighter Dark Gray */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 8% 9%; /* Darker Popover */
     --popover-foreground: 0 0% 98%;
-    --primary: 207 88% 70%; /* Calm Blue */
-    --primary-foreground: 210 40% 5%; /* Darker text for contrast */
-    --secondary: 240 3.7% 15.9%; /* Darker Gray */
+    --primary: 207 80% 65%; /* Slightly adjusted Calm Blue for dark */
+    --primary-foreground: 210 40% 10%; /* Darker text for contrast */
+    --secondary: 240 4% 16%; /* Darker Gray */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    --muted: 240 4% 16%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 174 63% 40%; /* Teal */
-    --accent-foreground: 355.7 100% 97.3%; /* Near White text */
-    --destructive: 0 62.8% 30.6%;
+    --accent: 174 60% 45%; /* Adjusted Teal for dark */
+    --accent-foreground: 0 0% 98%; /* Near White text */
+    --destructive: 0 70% 50%; /* Adjusted Destructive Red */
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%; /* Dark Border */
-    --input: 240 3.7% 15.9%; /* Dark Input Background */
-    --ring: 207 88% 70%; /* Calm Blue for focus rings */
+    --border: 240 4% 18%; /* Dark Border */
+    --input: 240 4% 18%; /* Dark Input Background */
+    --ring: 207 80% 65%; /* Adjusted Calm Blue for focus rings */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     --radius: 0.5rem;
-    --sidebar-background: 240 5.9% 10%;
+    /* Dark Sidebar variables */
+    --sidebar-background: 240 6% 12%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 207 88% 70%; /* Use primary color */
-    --sidebar-primary-foreground: 210 40% 5%; /* Use primary foreground */
-    --sidebar-accent: 174 63% 40%; /* Use accent color */
-    --sidebar-accent-foreground: 355.7 100% 97.3%; /* Use accent foreground */
-    --sidebar-border: 240 3.7% 15.9%; /* Use dark border color */
-    --sidebar-ring: 207 88% 70%; /* Use primary color for ring */
+    --sidebar-primary: 207 80% 65%;
+    --sidebar-primary-foreground: 210 40% 10%;
+    --sidebar-accent: 174 60% 45%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 4% 18%;
+    --sidebar-ring: 207 80% 65%;
   }
 }
 
@@ -87,7 +91,30 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    /* Apply background using the CSS variable which might be a gradient */
+    @apply text-foreground;
+    background: var(--background);
     font-family: var(--font-geist-sans), sans-serif;
+  }
+
+  /* Ensure gradients cover the full body height */
+  html, body {
+      min-height: 100vh;
+  }
+
+  /* Apply background explicitly to body in dark mode to handle gradient */
+  .dark body {
+    background: var(--background);
+    background-attachment: fixed; /* Optional: Keep gradient fixed during scroll */
+  }
+
+   /* Fallback for browsers not supporting the complex background variable */
+  @supports not (background: var(--background)) {
+    body {
+      @apply bg-background; /* Fallback to solid color */
+    }
+    .dark body {
+       background-color: hsl(var(--background-start-hsl)); /* Fallback to start color */
+    }
   }
 }
