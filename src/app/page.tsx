@@ -6,52 +6,61 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { TaskForm } from '@/components/task-form';
 import { TaskList } from '@/components/task-list';
 import { ScheduleDisplay } from '@/components/schedule-display';
-import { Toaster } from "@/components/ui/toaster"; // Import Toaster
-import { useToast } from "@/hooks/use-toast"; // Import useToast hook
+import { Toaster } from "@/components/ui/toaster";
+import { useToast } from "@/hooks/use-toast";
 import { suggestOptimalSchedule } from '@/ai/flows/suggest-optimal-schedule';
-import type { Task, Schedule, SuggestOptimalScheduleInput, SuggestOptimalScheduleOutput } from '@/lib/types';
-import { BrainCircuit } from 'lucide-react'; // Import BrainCircuit for AI features
-import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
-
+// Update imports to use the central types file
+import type {
+    Task,
+    Schedule,
+    SuggestOptimalScheduleInput, // Import from @/lib/types
+    SuggestOptimalScheduleOutput, // Import from @/lib/types
+    TaskWithoutId
+} from '@/lib/types';
+import { BrainCircuit } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
   // Load tasks from local storage on initial render
   useEffect(() => {
-    const storedTasks = localStorage.getItem('daywise-tasks');
-    if (storedTasks) {
-      try {
-        const parsedTasks = JSON.parse(storedTasks);
-        // Basic validation
-        if (Array.isArray(parsedTasks) && parsedTasks.every(t => typeof t.id === 'string' && typeof t.name === 'string')) {
-            setTasks(parsedTasks);
+    try {
+      const storedTasks = localStorage.getItem('daywise-tasks');
+      if (storedTasks) {
+        const parsedTasks: unknown = JSON.parse(storedTasks);
+        // Validate loaded data
+        if (Array.isArray(parsedTasks) && parsedTasks.every(t => typeof t?.id === 'string' && typeof t?.name === 'string')) {
+            setTasks(parsedTasks as Task[]);
         } else {
-             console.warn("Stored tasks data is invalid.");
-             localStorage.removeItem('daywise-tasks'); // Clear invalid data
+            console.warn("Stored tasks data is invalid. Clearing storage.");
+            localStorage.removeItem('daywise-tasks');
         }
-      } catch (error) {
+      }
+    } catch (error) {
         console.error("Failed to parse tasks from local storage:", error);
         localStorage.removeItem('daywise-tasks'); // Clear corrupted data
-      }
     }
   }, []);
 
   // Save tasks to local storage whenever tasks change
   useEffect(() => {
-    // Avoid saving initial empty array if loading from storage
-    if(tasks.length > 0 || localStorage.getItem('daywise-tasks')) {
-        localStorage.setItem('daywise-tasks', JSON.stringify(tasks));
+    // Avoid saving the initial potentially empty array before loading completes
+    // or if the loaded data was invalid (tasks would be empty)
+    if (tasks.length > 0 || localStorage.getItem('daywise-tasks') !== null) {
+      localStorage.setItem('daywise-tasks', JSON.stringify(tasks));
     }
   }, [tasks]);
 
 
-  const handleAddTask = (newTask: Task) => {
+  const handleAddTask = (newTaskData: TaskWithoutId) => {
+    const newTask: Task = { ...newTaskData, id: crypto.randomUUID() };
     setTasks((prevTasks) => [...prevTasks, newTask]);
-    toast({ title: "Task Added", description: `"${newTask.name}" has been added to your list.` });
+    toast({ title: "Task Added", description: `"${newTask.name}" has been added.` });
+    setSchedule(null); // Clear schedule when tasks change
   };
 
   const handleEditTask = (updatedTask: Task) => {
@@ -59,8 +68,7 @@ export default function Home() {
       prevTasks.map((task) => (task.id === updatedTask.id ? updatedTask : task))
     );
      toast({ title: "Task Updated", description: `"${updatedTask.name}" has been updated.` });
-     // Clear schedule if tasks change
-     setSchedule(null);
+     setSchedule(null); // Clear schedule when tasks change
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -69,8 +77,7 @@ export default function Home() {
     if (taskToDelete) {
       toast({ title: "Task Deleted", description: `"${taskToDelete.name}" has been removed.`, variant: "destructive" });
     }
-     // Clear schedule if tasks change
-    setSchedule(null);
+     setSchedule(null); // Clear schedule when tasks change
   };
 
   const handleGenerateSchedule = async () => {
@@ -80,11 +87,11 @@ export default function Home() {
     }
 
     setIsGenerating(true);
-    setSchedule(null); // Clear previous schedule
+    setSchedule(null); // Clear previous schedule while generating
 
-    // Prepare input for the AI flow, removing the client-side 'id'
+    // Prepare input for the AI flow (TaskWithoutId matches the schema)
     const aiInput: SuggestOptimalScheduleInput = {
-       tasks: tasks.map(({ id, ...rest }) => rest) // Exclude 'id'
+       tasks: tasks.map(({ id, ...rest }) => rest) // Exclude client-side 'id'
     };
 
     try {
@@ -95,11 +102,12 @@ export default function Home() {
        } else if (!result.isPossible) {
            toast({ title: "Scheduling Conflict", description: "Could not fit all tasks in one day.", variant: "destructive" });
        } else {
-            toast({ title: "Schedule Empty", description: "No tasks were scheduled."});
+            // Handle case where AI returns isPossible=true but schedule is empty
+            toast({ title: "Schedule Empty", description: "No tasks were scheduled, perhaps they are too short?", variant: "default"});
        }
     } catch (error) {
       console.error('Error generating schedule:', error);
-      toast({ title: "Error", description: "Failed to generate schedule. Please try again.", variant: "destructive" });
+      toast({ title: "AI Error", description: "Failed to generate schedule. Please check the AI configuration or try again later.", variant: "destructive" });
        setSchedule(null); // Ensure schedule is cleared on error
     } finally {
       setIsGenerating(false);
@@ -107,20 +115,20 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-secondary text-foreground"> {/* Apply gradient to main container */}
-      <header className="bg-primary/80 backdrop-blur-sm text-primary-foreground shadow-lg sticky top-0 z-50"> {/* Increased shadow */}
+    <div className="min-h-screen flex flex-col"> {/* Use flex-col for footer */}
+      <header className="bg-gradient-to-r from-primary/80 to-accent/80 backdrop-blur-sm text-primary-foreground shadow-lg sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3"> {/* Increased gap */}
-             <BrainCircuit className="h-7 w-7" /> {/* Slightly larger icon */}
-             <h1 className="text-3xl font-bold tracking-tight">DayWise</h1> {/* Larger, tighter tracking */}
+          <div className="flex items-center gap-3">
+             <BrainCircuit className="h-7 w-7" />
+             <h1 className="text-3xl font-bold tracking-tight">DayWise</h1>
           </div>
-          <ThemeToggle /> {/* Add ThemeToggle button */}
+          <ThemeToggle />
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10"> {/* Increased padding and gap */}
-        <div className="space-y-10"> {/* Increased spacing */}
-           <Card className="shadow-xl bg-card/85 backdrop-blur-md border border-border/50 transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]"> {/* Enhanced card styles */}
+      <main className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 flex-grow"> {/* Use flex-grow to push footer */}
+        <div className="space-y-10">
+           <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
             <CardHeader>
               <CardTitle>Add a New Task</CardTitle>
             </CardHeader>
@@ -138,11 +146,14 @@ export default function Home() {
           />
         </div>
 
-        <div className="space-y-10"> {/* Increased spacing */}
+        <div className="space-y-10 lg:sticky lg:top-24 self-start"> {/* Make schedule sticky on larger screens */}
             <ScheduleDisplay scheduleData={schedule} isLoading={isGenerating} />
         </div>
       </main>
-       <Toaster /> {/* Add Toaster component here */}
+       <Toaster />
+       <footer className="text-center py-4 text-muted-foreground text-sm">
+         Powered by AI ✨
+       </footer>
     </div>
   );
 }

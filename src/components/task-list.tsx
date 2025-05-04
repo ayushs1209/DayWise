@@ -1,10 +1,10 @@
 "use client";
 
 import type React from 'react';
-import { useState } from 'react'; // Import useState
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle, BrainCircuit } from 'lucide-react'; // Added BrainCircuit
+import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle, BrainCircuit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -14,14 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  // DialogClose, // No longer needed for programmatic close
 } from "@/components/ui/dialog";
-import { TaskForm } from './task-form'; // Import TaskForm
+import { TaskForm } from './task-form';
 
 interface TaskListProps {
   tasks: Task[];
   onGenerateSchedule: () => void;
-  onEditTask: (task: Task) => void; // Pass the full task object
+  onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   isGenerating: boolean;
 }
@@ -42,7 +41,7 @@ const getImportanceBadgeVariant = (importance: 'high' | 'medium' | 'low'): 'dest
 const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNode => {
     switch (importance) {
         case 'high':
-        return <AlertCircle className="mr-1 h-3.5 w-3.5 text-destructive-foreground dark:text-destructive-foreground" />; // Ensure icon contrast, slightly larger
+        return <AlertCircle className="mr-1 h-3.5 w-3.5 text-destructive-foreground" />;
         case 'medium':
         return <CheckCircle className="mr-1 h-3.5 w-3.5 text-secondary-foreground" />;
         case 'low':
@@ -53,13 +52,28 @@ const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNo
 };
 
 export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, isGenerating }: TaskListProps) {
-  const [editDialogOpen, setEditDialogOpen] = useState(false); // State for dialog
+  const [editDialogOpen, setEditDialogOpen] = useState<string | null>(null); // Store ID of task being edited
+
+  const handleEditSubmit = (updatedTask: Task) => {
+      onEditTask(updatedTask);
+      setEditDialogOpen(null); // Close dialog
+  }
+
+  const handleDeleteInDialog = (taskId: string) => {
+      onDeleteTask(taskId);
+      setEditDialogOpen(null); // Close dialog
+  }
 
   return (
     <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <CardTitle className="flex items-center text-2xl"><List className="mr-2 h-6 w-6" /> Your Tasks</CardTitle>
-         <Button onClick={onGenerateSchedule} disabled={tasks.length === 0 || isGenerating} className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95 disabled:from-muted disabled:to-muted/80">
+         <Button
+            onClick={onGenerateSchedule}
+            disabled={tasks.length === 0 || isGenerating}
+            variant="gradient" // Use gradient variant
+            className="disabled:from-muted disabled:to-muted/80 disabled:text-muted-foreground disabled:cursor-not-allowed" // Style disabled state
+         >
           {isGenerating ? (
             <>
               <Clock className="mr-2 h-4 w-4 animate-spin" /> Generating...
@@ -79,8 +93,7 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
         ) : (
           <div className="space-y-4">
             {tasks.map((task) => (
-              // Use controlled Dialog state
-              <Dialog key={task.id} open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+              <Dialog key={task.id} open={editDialogOpen === task.id} onOpenChange={(isOpen) => setEditDialogOpen(isOpen ? task.id : null)}>
                  <Card className="bg-gradient-to-r from-secondary/70 to-secondary/50 shadow-md border border-border/30 transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg group">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
@@ -120,16 +133,9 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                   <DialogHeader>
                     <DialogTitle className="text-xl">Edit Task</DialogTitle>
                   </DialogHeader>
-                  {/* Pass down handlers and initial data */}
                   <TaskForm
-                    onSubmit={(updatedTask) => {
-                      onEditTask(updatedTask);
-                      setEditDialogOpen(false); // Close dialog on successful submit
-                    }}
-                    onDelete={(taskId) => {
-                      onDeleteTask(taskId);
-                      setEditDialogOpen(false); // Close dialog on successful delete
-                    }}
+                    onSubmit={handleEditSubmit} // Use specific handler for edit
+                    onDelete={handleDeleteInDialog} // Use specific handler for delete within dialog
                     initialData={task}
                   />
                 </DialogContent>

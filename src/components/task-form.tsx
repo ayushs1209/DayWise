@@ -4,8 +4,8 @@ import type React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { format } from "date-fns"; // Import format
-import { Plus, Trash2, Save, CalendarIcon } from 'lucide-react'; // Added Save icon and CalendarIcon
+import { format } from "date-fns";
+import { Plus, Trash2, Save, CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,29 +29,30 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"; // Import Popover components
-import { Calendar } from "@/components/ui/calendar"; // Import Calendar
-import { cn } from "@/lib/utils"; // Import cn
-import type { Task } from '@/lib/types';
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import type { Task, TaskWithoutId } from '@/lib/types';
 
 const taskFormSchema = z.object({
   id: z.string().optional(), // Optional for new tasks
-  name: z.string().min(1, { message: 'Task name is required.' }).max(100, {message: 'Task name too long.'}), // Added max length
-  description: z.string().max(500, {message: 'Description too long.'}).optional(), // Added max length
+  name: z.string().min(1, { message: 'Task name is required.' }).max(100, {message: 'Task name too long.'}),
+  description: z.string().max(500, {message: 'Description too long.'}).optional(),
   deadline: z.date().optional(),
   importance: z.enum(['high', 'medium', 'low']).default('medium'),
   estimatedTime: z.coerce
-    .number()
-    .min(1, { message: 'Est. time must be at least 1 min.' }) // Shortened message
-    .max(1440, { message: 'Est. time cannot exceed 1 day (1440 min).'}), // Added max value
+    .number({ invalid_type_error: "Must be a number" })
+    .int()
+    .min(1, { message: 'Est. time must be at least 1 min.' })
+    .max(1440, { message: 'Est. time cannot exceed 1 day (1440 min).'}),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 interface TaskFormProps {
-  onSubmit: (task: Task) => void;
-  onDelete?: (taskId: string) => void; // Optional delete handler
-  initialData?: Task | null; // Optional initial data for editing
+  onSubmit: (task: Task | TaskWithoutId) => void; // Accept Task or TaskWithoutId
+  onDelete?: (taskId: string) => void;
+  initialData?: Task | null;
 }
 
 export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
@@ -72,15 +73,20 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
   });
 
   const handleFormSubmit = (values: TaskFormValues) => {
-    const taskToSubmit: Task = {
-      ...values,
-      id: initialData?.id || crypto.randomUUID(), // Use existing ID or generate new one
+    const taskData: TaskWithoutId = {
+      name: values.name,
+      description: values.description || undefined, // Ensure optional fields are undefined if empty
       deadline: values.deadline ? values.deadline.toISOString() : undefined,
-      estimatedTime: Number(values.estimatedTime), // Ensure it's a number
+      importance: values.importance,
+      estimatedTime: values.estimatedTime, // Already coerced to number by Zod
     };
-    onSubmit(taskToSubmit);
-    if (!initialData) { // Reset form only if it's a new task
-      form.reset({
+
+    if (initialData) {
+      const taskToSubmit: Task = { ...taskData, id: initialData.id };
+      onSubmit(taskToSubmit);
+    } else {
+      onSubmit(taskData); // Submit TaskWithoutId for new tasks
+       form.reset({ // Reset form only if it's a new task
         name: '',
         description: '',
         deadline: undefined,
@@ -92,7 +98,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6"> {/* Increased spacing */}
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -113,18 +119,18 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Add key details, links, or notes..." {...field} rows={3} /> {/* Suggested rows */}
+                <Textarea placeholder="Add key details, links, or notes..." {...field} value={field.value ?? ''} rows={3} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3"> {/* Responsive grid */}
+        <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
            <FormField
             control={form.control}
             name="deadline"
             render={({ field }) => (
-              <FormItem className="flex flex-col justify-end"> {/* Align label better */}
+              <FormItem className="flex flex-col justify-end">
                 <FormLabel>Deadline (Optional)</FormLabel>
                  <Popover>
                     <PopoverTrigger asChild>
@@ -151,7 +157,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                       selected={field.value}
                       onSelect={field.onChange}
                       disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
                       }
                       initialFocus
                     />
@@ -174,7 +180,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="high">High 🔥</SelectItem> {/* Added emojis */}
+                    <SelectItem value="high">High 🔥</SelectItem>
                     <SelectItem value="medium">Medium ✨</SelectItem>
                     <SelectItem value="low">Low 🌱</SelectItem>
                   </SelectContent>
@@ -190,21 +196,22 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Est. Time (min)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 60" {...field} min="1" max="1440"/> {/* Added min/max */}
+                  {/* Ensure field.value is handled correctly, especially on reset */}
+                  <Input type="number" placeholder="e.g., 60" {...field} value={field.value ?? ''} min="1" max="1440"/>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <div className="flex justify-end space-x-3 pt-2"> {/* Increased top padding and spacing */}
+        <div className="flex justify-end space-x-3 pt-2">
           {initialData && onDelete && (
              <Button
                 type="button"
                 variant="destructive"
                 onClick={() => onDelete(initialData.id)}
                 size="icon"
-                className="shadow-md transition-all duration-200 hover:shadow-lg active:scale-95" /* Added effects */
+                className="shadow-md transition-all duration-200 hover:shadow-lg active:scale-95"
               >
                 <Trash2 className="h-4 w-4"/>
                 <span className="sr-only">Delete Task</span>
@@ -212,7 +219,8 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
           )}
           <Button
             type="submit"
-            className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95" /* Gradient Button */
+            variant="gradient" // Use gradient variant
+            disabled={form.formState.isSubmitting} // Disable during submission
             >
              {initialData ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
              {initialData ? 'Save Changes' : 'Add Task'}

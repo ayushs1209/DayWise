@@ -3,43 +3,14 @@
  * @fileOverview Suggests an optimal schedule for the user's tasks, considering deadlines and importance.
  *
  * - suggestOptimalSchedule - A function that suggests an optimal schedule for the user's tasks.
- * - SuggestOptimalScheduleInput - The input type for the suggestOptimalSchedule function.
- * - SuggestOptimalScheduleOutput - The return type for the suggestOptimalSchedule function.
  */
 
-import {ai} from '@/ai/ai-instance';
-import {z} from 'genkit';
+import { ai } from '@/ai/ai-instance';
+// Import schemas and types from the central types file
+import type { SuggestOptimalScheduleInput, SuggestOptimalScheduleOutput } from '@/lib/types';
+import { SuggestOptimalScheduleInputSchema, SuggestOptimalScheduleOutputSchema } from '@/lib/types';
 
-const SuggestOptimalScheduleInputSchema = z.object({
-  tasks: z
-    .array(
-      z.object({
-        name: z.string().describe('The name of the task.'),
-        description: z.string().optional().describe('A description of the task.'),
-        deadline: z.string().optional().describe('The deadline for the task (e.g., YYYY-MM-DDTHH:MM:SSZ).'),
-        importance: z
-          .enum(['high', 'medium', 'low'])
-          .default('medium')
-          .describe('The importance of the task.'),
-        estimatedTime: z.number().describe('Estimated time in minutes to complete the task.'),
-      })
-    )
-    .describe('A list of tasks to schedule.'),
-});
-export type SuggestOptimalScheduleInput = z.infer<typeof SuggestOptimalScheduleInputSchema>;
-
-const SuggestOptimalScheduleOutputSchema = z.object({
-  schedule: z.array(
-    z.object({
-      name: z.string().describe('The name of the task.'),
-      startTime: z.string().describe('The start time for the task (e.g., HH:MM).'),
-      endTime: z.string().describe('The end time for the task (e.g., HH:MM).'),
-    })
-  ),
-  isPossible: z.boolean().describe('Whether it is possible to schedule all tasks within a single day.'),
-});
-export type SuggestOptimalScheduleOutput = z.infer<typeof SuggestOptimalScheduleOutputSchema>;
-
+// Export only the async function
 export async function suggestOptimalSchedule(input: SuggestOptimalScheduleInput): Promise<SuggestOptimalScheduleOutput> {
   return suggestOptimalScheduleFlow(input);
 }
@@ -47,49 +18,27 @@ export async function suggestOptimalSchedule(input: SuggestOptimalScheduleInput)
 const prompt = ai.definePrompt({
   name: 'suggestOptimalSchedulePrompt',
   input: {
-    schema: z.object({
-      tasks: z
-        .array(
-          z.object({
-            name: z.string().describe('The name of the task.'),
-            description: z.string().optional().describe('A description of the task.'),
-            deadline: z.string().optional().describe('The deadline for the task (e.g., YYYY-MM-DDTHH:MM:SSZ).'),
-            importance: z
-              .enum(['high', 'medium', 'low'])
-              .default('medium')
-              .describe('The importance of the task.'),
-            estimatedTime: z.number().describe('Estimated time in minutes to complete the task.'),
-          })
-        )
-        .describe('A list of tasks to schedule.'),
-    }),
+    schema: SuggestOptimalScheduleInputSchema, // Use imported schema
   },
   output: {
-    schema: z.object({
-      schedule: z.array(
-        z.object({
-          name: z.string().describe('The name of the task.'),
-          startTime: z.string().describe('The start time for the task (e.g., HH:MM).'),
-          endTime: z.string().describe('The end time for the task (e.g., HH:MM).'),
-        })
-      ),
-      isPossible: z.boolean().describe('Whether it is possible to schedule all tasks within a single day.'),
-    }),
+    schema: SuggestOptimalScheduleOutputSchema, // Use imported schema
   },
-  prompt: `Given the following list of tasks, suggest an optimal schedule for the day, considering deadlines and importance. The schedule should be in chronological order, with start and end times for each task.
+  prompt: `Given the following list of tasks, suggest an optimal schedule for the day, considering deadlines and importance. The schedule should be in chronological order, with start and end times for each task. Assume a standard working day (e.g., 9:00 to 17:00) unless deadlines suggest otherwise. Try to fit all tasks, prioritizing higher importance and earlier deadlines. Include reasonable breaks between tasks if possible.
 
 Tasks:
 {{#each tasks}}
 - Name: {{name}}
-  Description: {{description}}
-  Deadline: {{deadline}}
+  {{#if description}}Description: {{description}}{{/if}}
+  {{#if deadline}}Deadline: {{deadline}}{{/if}}
   Importance: {{importance}}
   Estimated Time: {{estimatedTime}} minutes
 {{/each}}
 
-Return a JSON object containing the schedule and a boolean indicating whether it is possible to schedule all tasks within a single day. If it is not possible, return an empty schedule and isPossible as false.`,
+Return a JSON object containing the schedule array and a boolean 'isPossible'.
+If it's impossible to schedule all tasks within a single reasonable day (consider total estimated time vs. available hours), return an empty schedule array and set 'isPossible' to false. Otherwise, return the generated schedule and set 'isPossible' to true.`,
 });
 
+// Define the flow using imported schemas
 const suggestOptimalScheduleFlow = ai.defineFlow<
   typeof SuggestOptimalScheduleInputSchema,
   typeof SuggestOptimalScheduleOutputSchema
@@ -99,6 +48,8 @@ const suggestOptimalScheduleFlow = ai.defineFlow<
   outputSchema: SuggestOptimalScheduleOutputSchema,
 },
 async input => {
-  const {output} = await prompt(input);
+  const { output } = await prompt(input);
+  // Ensure the output matches the schema, return a default/error state if not
+  // The prompt's output validation handles this, but `!` is still needed for type safety if not strictly guaranteed
   return output!;
 });
