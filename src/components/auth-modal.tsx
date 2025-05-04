@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { useState } from 'react';
-import { GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously } from 'firebase/auth'; // Import signInAnonymously
 import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,8 +16,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogIn, LogOut, Loader2 } from 'lucide-react'; // Added LogIn import and Loader2
-import { useAuth } from '@/context/auth-context'; // Import useAuth hook
+import { LogIn, LogOut, Loader2, User as UserIcon, Ghost } from 'lucide-react'; // Added Ghost icon
+import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -72,6 +72,21 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     }
   };
 
+   const handleGuestSignIn = async () => {
+    setIsSubmitting(true);
+    try {
+      await signInAnonymously(auth);
+      onOpenChange(false); // Close modal on successful guest sign-in
+      toast({ title: 'Signed In as Guest', description: 'You are now browsing as a guest.' });
+    } catch (error: any) {
+      console.error('Error signing in anonymously:', error);
+      toast({ title: 'Guest Sign In Error', description: error.message || 'Failed to sign in as guest.', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
   const handleEmailPasswordSubmit = async (values: AuthFormValues) => {
     setIsSubmitting(true);
     try {
@@ -121,26 +136,27 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card/95 backdrop-blur-md border border-border/60 shadow-xl sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-xl">{user ? 'Account' : 'Sign In / Sign Up'}</DialogTitle>
+          <DialogTitle className="text-xl">{user ? (user.isAnonymous ? 'Guest Account' : 'Account') : 'Sign In / Sign Up'}</DialogTitle>
           <DialogDescription>
-            {user ? `Signed in as ${user.displayName || user.email}` : 'Sign in or create an account to manage your tasks.'}
+            {user ? (user.isAnonymous ? 'You are currently browsing as a guest.' : `Signed in as ${user.displayName || user.email}`) : 'Sign in, sign up, or continue as a guest.'}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           {user ? (
             <Button onClick={handleSignOut} variant="destructive" className="w-full" disabled={isSubmitting}>
                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-              Sign Out
+              Sign Out {user.isAnonymous ? '(Guest)' : ''}
             </Button>
           ) : (
-             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin">
-                 <Form {...form}>
-                     <form onSubmit={form.handleSubmit(handleEmailPasswordSubmit)} className="space-y-4 mt-4">
+             <>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="signin">Sign In</TabsTrigger>
+                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
+                <TabsContent value="signin">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleEmailPasswordSubmit)} className="space-y-4 mt-4">
                         <FormField
                             control={form.control}
                             name="email"
@@ -154,7 +170,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={form.control}
                             name="password"
                             render={({ field }) => (
@@ -168,15 +184,15 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                             )}
                         />
                         <Button type="submit" variant="gradient" className="w-full" disabled={isSubmitting}>
-                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
                             Sign In
                         </Button>
-                    </form>
-                 </Form>
-              </TabsContent>
-              <TabsContent value="signup">
-                 <Form {...form}>
-                     <form onSubmit={form.handleSubmit(handleEmailPasswordSubmit)} className="space-y-4 mt-4">
+                        </form>
+                    </Form>
+                </TabsContent>
+                <TabsContent value="signup">
+                    <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleEmailPasswordSubmit)} className="space-y-4 mt-4">
                         <FormField
                             control={form.control}
                             name="email"
@@ -190,7 +206,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                                 </FormItem>
                             )}
                         />
-                         <FormField
+                        <FormField
                             control={form.control}
                             name="password"
                             render={({ field }) => (
@@ -203,29 +219,37 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                                 </FormItem>
                             )}
                         />
-                         <Button type="submit" variant="gradient" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />} {/* Consider adding UserPlus icon */}
-                             Sign Up
+                        <Button type="submit" variant="gradient" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                            Sign Up
                         </Button>
-                    </form>
-                 </Form>
-              </TabsContent>
-               <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
+                        </form>
+                    </Form>
+                </TabsContent>
+                </Tabs>
+
+                <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
                     <span className="w-full border-t border-border/50" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">
-                      Or continue with
-                    </span>
-                  </div>
                 </div>
-                <Button onClick={handleGoogleSignIn} variant="outline" className="w-full" disabled={isSubmitting}>
-                    {/* Consider adding a Google icon here */}
-                    <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
-                     Sign In with Google
-                </Button>
-            </Tabs>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">
+                    Or continue with
+                    </span>
+                </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Button onClick={handleGoogleSignIn} variant="outline" className="w-full" disabled={isSubmitting}>
+                        <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path></svg>
+                        Sign In with Google
+                    </Button>
+                    <Button onClick={handleGuestSignIn} variant="secondary" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ghost className="mr-2 h-4 w-4" />}
+                        Continue as Guest
+                    </Button>
+                </div>
+            </>
           )}
         </div>
          <DialogFooter>

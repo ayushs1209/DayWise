@@ -16,7 +16,7 @@ import type {
     SuggestOptimalScheduleOutput,
     TaskWithoutId
 } from '@/lib/types';
-import { BrainCircuit, User as UserIcon, Loader2, LogIn } from 'lucide-react'; // Correctly import LogIn
+import { BrainCircuit, User as UserIcon, Loader2, LogIn, Ghost } from 'lucide-react'; // Correctly import LogIn and Ghost
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/context/auth-context'; // Import authentication hook
 import { AuthModal } from '@/components/auth-modal'; // Import authentication modal
@@ -31,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 // Fetch tasks for the logged-in user
 const fetchTasks = async (userId: string): Promise<Task[]> => {
   if (!userId) return [];
+  // Use a consistent collection name, e.g., 'tasks' directly under 'users/{userId}'
   const tasksCol = collection(db, 'users', userId, 'tasks');
   const q = query(tasksCol); // Add ordering later if needed (e.g., orderBy('createdAt'))
   const taskSnapshot = await getDocs(q);
@@ -67,7 +68,7 @@ const addTask = async ({ userId, taskData }: { userId: string, taskData: TaskWit
 const editTask = async ({ userId, task }: { userId: string, task: Task }) => {
   if (!userId) throw new Error("User not logged in");
   const taskRef = doc(db, 'users', userId, 'tasks', task.id);
-  const { id, ...taskData } = task; // Exclude id from data to be updated
+  const { id, createdAt, userId: taskUserId, ...taskData } = task; // Exclude id, createdAt, userId from data to be updated
   // Convert ISO string deadline back to Firestore Timestamp if it exists
   const deadlineTimestamp = taskData.deadline ? Timestamp.fromDate(new Date(taskData.deadline)) : undefined;
 
@@ -227,9 +228,13 @@ export default function Home() {
                     {authLoading ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
                     ) : user ? (
-                         <UserIcon className="h-5 w-5" /> // Renamed import
+                         user.isAnonymous ? (
+                            <Ghost className="h-5 w-5" /> // Show Ghost icon for anonymous users
+                         ) : (
+                             <UserIcon className="h-5 w-5" /> // User icon for signed-in users
+                         )
                     ) : (
-                        <LogIn className="h-5 w-5" /> // Use imported LogIn icon
+                        <LogIn className="h-5 w-5" /> // Use imported LogIn icon for signed-out users
                     )}
                     <span className="sr-only">Account</span>
                 </Button>
@@ -239,28 +244,21 @@ export default function Home() {
 
       <main className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 flex-grow">
            {isLoading ? (
-             <div className="space-y-10">
-                <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300">
-                    <CardHeader><CardTitle>Loading...</CardTitle></CardHeader>
-                    <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
-                </Card>
-                 <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300">
-                    <CardHeader><CardTitle>Loading Tasks...</CardTitle></CardHeader>
-                    <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
-                </Card>
+             <div className="lg:col-span-2 flex items-center justify-center p-10">
+                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
            ) : !user ? (
              // Show prompt to sign in if not logged in
               <div className="lg:col-span-2 flex flex-col items-center justify-center text-center p-10 bg-card/70 backdrop-blur-md rounded-lg shadow-xl border border-border/40">
                 <UserIcon className="h-16 w-16 text-primary mb-4" />
                 <h2 className="text-2xl font-semibold mb-2">Welcome to DayWise!</h2>
-                <p className="text-muted-foreground mb-6">Please sign in to manage your tasks and generate schedules.</p>
+                <p className="text-muted-foreground mb-6">Please sign in or continue as a guest to manage your tasks and generate schedules.</p>
                 <Button variant="gradient" onClick={() => setIsAuthModalOpen(true)}>
-                  <LogIn className="mr-2 h-4 w-4" /> Sign In / Sign Up
+                  <LogIn className="mr-2 h-4 w-4" /> Sign In / Sign Up / Guest
                 </Button>
               </div>
            ) : (
-             // Show main content if logged in
+             // Show main content if logged in (including guests)
              <>
                 <div className="space-y-10">
                     <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
@@ -283,6 +281,12 @@ export default function Home() {
                     {tasksError && (
                         <p className="text-destructive text-sm">Error loading tasks: {tasksError.message}</p>
                     )}
+                     {tasksLoading && !tasksError && (
+                        <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300">
+                            <CardHeader><CardTitle>Loading Tasks...</CardTitle></CardHeader>
+                            <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
+                        </Card>
+                    )}
                 </div>
 
                 <div className="space-y-10 lg:sticky lg:top-24 self-start">
@@ -299,5 +303,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
