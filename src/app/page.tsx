@@ -408,7 +408,7 @@ export default function Home() {
 
        <Toaster />
        <footer className="text-center py-4 text-muted-foreground text-sm">
-         Powered by AI ✨
+         Powered by Rano ✨
        </footer>
        {/* AuthModal remains available */}
        <AuthModal open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen} />
