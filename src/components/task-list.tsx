@@ -3,7 +3,7 @@
 import type React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle, BrainCircuit } from 'lucide-react'; // Added BrainCircuit
 import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
@@ -41,11 +41,11 @@ const getImportanceBadgeVariant = (importance: 'high' | 'medium' | 'low'): 'dest
 const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNode => {
     switch (importance) {
         case 'high':
-        return <AlertCircle className="mr-1 h-3 w-3 text-destructive-foreground dark:text-destructive-foreground" />; // Ensure icon contrast in dark destructive
+        return <AlertCircle className="mr-1 h-3.5 w-3.5 text-destructive-foreground dark:text-destructive-foreground" />; // Ensure icon contrast, slightly larger
         case 'medium':
-        return <CheckCircle className="mr-1 h-3 w-3 text-secondary-foreground" />;
+        return <CheckCircle className="mr-1 h-3.5 w-3.5 text-secondary-foreground" />;
         case 'low':
-        return <XCircle className="mr-1 h-3 w-3 text-muted-foreground" />;
+        return <XCircle className="mr-1 h-3.5 w-3.5 text-muted-foreground" />;
         default:
         return null;
     }
@@ -54,58 +54,68 @@ const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNo
 export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, isGenerating }: TaskListProps) {
 
   return (
-    <Card className="bg-card/80 backdrop-blur-sm shadow-lg"> {/* Adjusted card background */}
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center"><List className="mr-2 h-5 w-5" /> Your Tasks</CardTitle>
-        <Button onClick={onGenerateSchedule} disabled={tasks.length === 0 || isGenerating}>
-          {isGenerating ? 'Generating...' : 'Generate Schedule'}
+    <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+      <CardHeader className="flex flex-row items-center justify-between pb-4"> {/* Reduced bottom padding */}
+        <CardTitle className="flex items-center text-2xl"><List className="mr-2 h-6 w-6" /> Your Tasks</CardTitle> {/* Styled title */}
+         <Button onClick={onGenerateSchedule} disabled={tasks.length === 0 || isGenerating} className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95 disabled:from-muted disabled:to-muted/80"> {/* Gradient Button */}
+          {isGenerating ? (
+            <>
+              <Clock className="mr-2 h-4 w-4 animate-spin" /> Generating...
+            </>
+          ) : (
+             <>
+              <BrainCircuit className="mr-2 h-4 w-4" /> Generate Schedule {/* Added AI Icon */}
+             </>
+          )}
         </Button>
       </CardHeader>
       <CardContent>
         {tasks.length === 0 ? (
-          <p className="text-center text-muted-foreground">No tasks added yet. Add tasks using the form above.</p>
+          <p className="py-10 text-center text-muted-foreground text-lg"> {/* Increased padding and text size */}
+            No tasks added yet. Use the form above to plan your day!
+          </p>
         ) : (
           <div className="space-y-4">
             {tasks.map((task) => (
               <Dialog key={task.id}>
-                <Card className="bg-secondary/60 shadow-sm hover:shadow-md transition-shadow"> {/* Adjusted item card background */}
+                 <Card className="bg-gradient-to-r from-secondary/70 to-secondary/50 shadow-md border border-border/30 transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg group"> {/* Subtle gradient and hover effect, added group for hover states */}
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-medium">{task.name}</p>
+                        <p className="font-semibold text-lg">{task.name}</p> {/* Larger font */}
                         {task.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p> {/* Limit description lines */}
                         )}
                       </div>
-                      <div className="flex space-x-1">
+                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"> {/* Icons appear on hover */}
                         <DialogTrigger asChild>
-                           <Button variant="ghost" size="icon" className="h-8 w-8">
+                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
                             <Edit className="h-4 w-4" />
                             <span className="sr-only">Edit Task</span>
                           </Button>
                         </DialogTrigger>
-                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive/90" onClick={() => onDeleteTask(task.id)}> {/* Adjusted hover color */}
+                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => onDeleteTask(task.id)}>
                            <Trash2 className="h-4 w-4" />
                            <span className="sr-only">Delete Task</span>
                          </Button>
                       </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Badge variant={getImportanceBadgeVariant(task.importance)} className="flex items-center">
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"> {/* Increased top margin and gap */}
+                       <Badge variant={getImportanceBadgeVariant(task.importance)} className="flex items-center px-2.5 py-1 shadow-sm"> {/* Increased padding, added shadow */}
                         {getImportanceIcon(task.importance)}
                         {task.importance.charAt(0).toUpperCase() + task.importance.slice(1)}
                       </Badge>
-                      <span className="flex items-center"><Clock className="mr-1 h-3 w-3" /> {task.estimatedTime} min</span>
+                      <span className="flex items-center"><Clock className="mr-1 h-3.5 w-3.5" /> {task.estimatedTime} min</span>
                       {task.deadline && (
-                        <span className="flex items-center"><CalendarDays className="mr-1 h-3 w-3" /> {format(parseISO(task.deadline), 'MMM d, yyyy')}</span>
+                        <span className="flex items-center"><CalendarDays className="mr-1 h-3.5 w-3.5" /> {format(parseISO(task.deadline), 'MMM d, yyyy')}</span>
                       )}
                     </div>
                   </CardContent>
                 </Card>
 
-                <DialogContent className="bg-card/95 backdrop-blur-sm"> {/* Adjusted dialog background */}
+                 <DialogContent className="bg-card/95 backdrop-blur-md border border-border/60 shadow-xl"> {/* Enhanced dialog style */}
                   <DialogHeader>
-                    <DialogTitle>Edit Task</DialogTitle>
+                    <DialogTitle className="text-xl">Edit Task</DialogTitle> {/* Larger title */}
                   </DialogHeader>
                   {/* Pass down handlers and initial data */}
                   <TaskForm

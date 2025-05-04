@@ -4,7 +4,7 @@ import type React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Save } from 'lucide-react'; // Added Save icon
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,13 +29,14 @@ import type { Task } from '@/lib/types';
 
 const taskFormSchema = z.object({
   id: z.string().optional(), // Optional for new tasks
-  name: z.string().min(1, { message: 'Task name is required.' }),
-  description: z.string().optional(),
+  name: z.string().min(1, { message: 'Task name is required.' }).max(100, {message: 'Task name too long.'}), // Added max length
+  description: z.string().max(500, {message: 'Description too long.'}).optional(), // Added max length
   deadline: z.date().optional(),
   importance: z.enum(['high', 'medium', 'low']).default('medium'),
   estimatedTime: z.coerce
     .number()
-    .min(1, { message: 'Estimated time must be at least 1 minute.' }),
+    .min(1, { message: 'Est. time must be at least 1 min.' }) // Shortened message
+    .max(1440, { message: 'Est. time cannot exceed 1 day (1440 min).'}), // Added max value
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -84,7 +85,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6"> {/* Increased spacing */}
         <FormField
           control={form.control}
           name="name"
@@ -92,7 +93,7 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             <FormItem>
               <FormLabel>Task Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g., Finish report" {...field} />
+                <Input placeholder="e.g., Finish quarterly report" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -105,18 +106,18 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Add details about the task..." {...field} />
+                <Textarea placeholder="Add key details, links, or notes..." {...field} rows={3} /> {/* Suggested rows */}
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3"> {/* Responsive grid */}
           <FormField
             control={form.control}
             name="deadline"
             render={({ field }) => (
-              <FormItem className="flex flex-col">
+              <FormItem className="flex flex-col justify-end"> {/* Align label better */}
                 <FormLabel>Deadline (Optional)</FormLabel>
                 <DatePicker date={field.value} setDate={field.onChange} />
                 <FormMessage />
@@ -132,13 +133,13 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select importance" />
+                      <SelectValue placeholder="Select importance level" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="high">High 🔥</SelectItem> {/* Added emojis */}
+                    <SelectItem value="medium">Medium ✨</SelectItem>
+                    <SelectItem value="low">Low 🌱</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -152,22 +153,31 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
               <FormItem>
                 <FormLabel>Est. Time (min)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 60" {...field} />
+                  <Input type="number" placeholder="e.g., 60" {...field} min="1" max="1440"/> {/* Added min/max */}
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-        <div className="flex justify-end space-x-2">
+        <div className="flex justify-end space-x-3 pt-2"> {/* Increased top padding and spacing */}
           {initialData && onDelete && (
-             <Button type="button" variant="destructive" onClick={() => onDelete(initialData.id)} size="icon">
-                <Trash2 />
+             <Button
+                type="button"
+                variant="destructive"
+                onClick={() => onDelete(initialData.id)}
+                size="icon"
+                className="shadow-md transition-all duration-200 hover:shadow-lg active:scale-95" /* Added effects */
+              >
+                <Trash2 className="h-4 w-4"/>
                 <span className="sr-only">Delete Task</span>
               </Button>
           )}
-          <Button type="submit">
-            {initialData ? 'Save Changes' : <> <Plus className="mr-2 h-4 w-4" /> Add Task </>}
+          <Button
+            type="submit"
+            className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95" /* Gradient Button */
+            >
+             {initialData ? <><Save className="mr-2 h-4 w-4" /> Save Changes</> : <><Plus className="mr-2 h-4 w-4" /> Add Task</>}
           </Button>
         </div>
       </form>

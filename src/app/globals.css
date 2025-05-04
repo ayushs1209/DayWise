@@ -46,44 +46,45 @@ body {
   }
 
   .dark {
-    /* Dark Theme with Gradients */
-    --background-start-hsl: 240 10% 8%; /* Dark Blue/Gray Start */
-    --background-end-hsl: 260 15% 5%; /* Dark Purple/Black End */
+    /* Dark Theme with Enhanced Gradients */
+    --background-start-hsl: 220 25% 10%; /* Darker Blue Start */
+    --background-end-hsl: 260 20% 6%; /* Darker Purple End */
     /* Use CSS variables for gradient */
     --background: linear-gradient(145deg, hsl(var(--background-start-hsl)), hsl(var(--background-end-hsl)));
     --foreground: 0 0% 98%; /* Near White */
-    --card: 240 6% 12%; /* Slightly Lighter Dark Gray */
+    /* Card with slight transparency */
+    --card: 240 8% 15%; /* Slightly lighter dark base for cards */
     --card-foreground: 0 0% 98%;
-    --popover: 240 8% 9%; /* Darker Popover */
+    --popover: 240 8% 10%; /* Darker Popover */
     --popover-foreground: 0 0% 98%;
-    --primary: 207 80% 65%; /* Slightly adjusted Calm Blue for dark */
-    --primary-foreground: 210 40% 10%; /* Darker text for contrast */
-    --secondary: 240 4% 16%; /* Darker Gray */
+    --primary: 207 85% 68%; /* Vibrant Calm Blue for dark */
+    --primary-foreground: 210 40% 8%; /* Dark text for contrast on primary */
+    --secondary: 240 5% 18%; /* Darker Gray for secondary elements */
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
+    --muted: 240 5% 18%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 174 60% 45%; /* Adjusted Teal for dark */
-    --accent-foreground: 0 0% 98%; /* Near White text */
-    --destructive: 0 70% 50%; /* Adjusted Destructive Red */
+    --accent: 174 70% 50%; /* Vibrant Teal for dark */
+    --accent-foreground: 0 0% 98%; /* Near White text for contrast on accent */
+    --destructive: 0 75% 55%; /* Adjusted Destructive Red */
     --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 18%; /* Dark Border */
-    --input: 240 4% 18%; /* Dark Input Background */
-    --ring: 207 80% 65%; /* Adjusted Calm Blue for focus rings */
+    --border: 240 5% 25%; /* Slightly lighter dark Border */
+    --input: 240 5% 20%; /* Dark Input Background */
+    --ring: 207 85% 68%; /* Adjusted Calm Blue for focus rings */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
     --radius: 0.5rem;
-    /* Dark Sidebar variables */
-    --sidebar-background: 240 6% 12%;
+    /* Dark Sidebar variables adjusted for consistency */
+    --sidebar-background: 240 8% 12%; /* Consistent with card base */
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 207 80% 65%;
-    --sidebar-primary-foreground: 210 40% 10%;
-    --sidebar-accent: 174 60% 45%;
+    --sidebar-primary: 207 85% 68%;
+    --sidebar-primary-foreground: 210 40% 8%;
+    --sidebar-accent: 174 70% 50%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 18%;
-    --sidebar-ring: 207 80% 65%;
+    --sidebar-border: 240 5% 25%;
+    --sidebar-ring: 207 85% 68%;
   }
 }
 
@@ -98,15 +99,16 @@ body {
     font-family: var(--font-geist-sans), sans-serif;
   }
 
-  /* Ensure gradients cover the full body height */
+  /* Ensure gradients cover the full body height and stay fixed */
   html, body {
       min-height: 100vh;
+      background-attachment: fixed;
   }
 
   /* Apply background explicitly to body in dark mode to handle gradient */
   .dark body {
     background: var(--background);
-    background-attachment: fixed; /* Optional: Keep gradient fixed during scroll */
+    background-attachment: fixed; /* Keep gradient fixed during scroll */
   }
 
    /* Fallback for browsers not supporting the complex background variable */

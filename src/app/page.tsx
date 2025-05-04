@@ -107,20 +107,20 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground"> {/* Ensure body uses bg-background */}
-      <header className="bg-primary/80 backdrop-blur-sm text-primary-foreground shadow-md sticky top-0 z-50"> {/* Adjusted header background */}
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary text-foreground"> {/* Apply gradient to main container */}
+      <header className="bg-primary/80 backdrop-blur-sm text-primary-foreground shadow-lg sticky top-0 z-50"> {/* Increased shadow */}
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-             <BrainCircuit className="h-6 w-6" />
-             <h1 className="text-2xl font-bold">DayWise</h1>
+          <div className="flex items-center gap-3"> {/* Increased gap */}
+             <BrainCircuit className="h-7 w-7" /> {/* Slightly larger icon */}
+             <h1 className="text-3xl font-bold tracking-tight">DayWise</h1> {/* Larger, tighter tracking */}
           </div>
           <ThemeToggle /> {/* Add ThemeToggle button */}
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-8">
-          <Card className="shadow-lg bg-card/80 backdrop-blur-sm"> {/* Adjusted card background */}
+      <main className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10"> {/* Increased padding and gap */}
+        <div className="space-y-10"> {/* Increased spacing */}
+           <Card className="shadow-xl bg-card/85 backdrop-blur-md border border-border/50 transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]"> {/* Enhanced card styles */}
             <CardHeader>
               <CardTitle>Add a New Task</CardTitle>
             </CardHeader>
@@ -138,7 +138,7 @@ export default function Home() {
           />
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-10"> {/* Increased spacing */}
             <ScheduleDisplay scheduleData={schedule} isLoading={isGenerating} />
         </div>
       </main>
