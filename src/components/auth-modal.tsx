@@ -17,7 +17,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogIn, LogOut, Loader2, User as UserIcon, Ghost } from 'lucide-react'; // Added Ghost icon
+import { LogIn, LogOut, Loader2, User as UserIcon, Ghost, UserPlus } from 'lucide-react'; // Added Ghost icon and UserPlus
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,7 +67,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       toast({ title: 'Signed In', description: 'Successfully signed in with Google.' });
     } catch (error: any) {
       console.error('Error signing in with Google:', error);
-      toast({ title: 'Sign In Error', description: error.message || 'Failed to sign in with Google.', variant: 'destructive' });
+      let errorMessage = 'Failed to sign in with Google.';
+      if (error.code === 'auth/popup-closed-by-user') {
+          errorMessage = 'Sign-in popup closed before completion.';
+      } else if (error.message) {
+          errorMessage = error.message;
+      }
+      toast({ title: 'Sign In Error', description: errorMessage, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -105,13 +111,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
       console.error(`Error during ${activeTab}:`, error);
        // Provide more specific Firebase error messages
       let errorMessage = `Failed to ${activeTab === 'signin' ? 'sign in' : 'sign up'}. Please try again.`;
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = 'Invalid email or password.';
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email address is already in use.';
-      } else if (error.code === 'auth/invalid-credential') { // Updated error code for Firebase v9+
-          errorMessage = 'Invalid email or password.';
-      } else if (error.code) {
+      } else if (error.code === 'auth/weak-password') {
+          errorMessage = 'Password is too weak. Please choose a stronger password.';
+      } else if (error.message) {
         errorMessage = error.message; // Use Firebase's message if available
       }
       toast({ title: `${activeTab === 'signin' ? 'Sign In' : 'Sign Up'} Error`, description: errorMessage, variant: 'destructive' });
@@ -141,15 +147,20 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         <DialogHeader>
           <DialogTitle className="text-xl">{user ? (user.isAnonymous ? 'Guest Account' : 'Account') : 'Sign In / Sign Up'}</DialogTitle>
           <DialogDescription>
-            {user ? (user.isAnonymous ? 'You are currently browsing as a guest. Your tasks are stored locally.' : `Signed in as ${user.displayName || user.email}`) : 'Sign in, sign up, or continue as a guest.'}
+            {user ? (user.isAnonymous ? 'You are browsing as a guest. Sign up or sign in to save your tasks.' : `Signed in as ${user.displayName || user.email}`) : 'Sign in, sign up, or continue as a guest to use the app locally.'}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           {user ? (
-            <Button onClick={handleSignOut} variant="destructive" className="w-full" disabled={isSubmitting}>
-               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
-              Sign Out {user.isAnonymous ? '(Guest)' : ''}
-            </Button>
+             <div className="space-y-3">
+                {user.isAnonymous && (
+                    <p className="text-sm text-center text-muted-foreground">Guest tasks are not saved permanently.</p>
+                )}
+                <Button onClick={handleSignOut} variant="destructive" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+                    Sign Out {user.isAnonymous ? '(Guest)' : ''}
+                </Button>
+             </div>
           ) : (
              <>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -252,37 +263,42 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                         Continue as Guest
                     </Button>
                 </div>
+                 <Button type="button" variant="link" className="mt-4 w-full text-muted-foreground" onClick={() => onOpenChange(false)}>
+                    Use App Without Account
+                 </Button>
             </>
           )}
         </div>
-         <DialogFooter>
-             {/* Optionally add a close button if not relying on overlay click */}
-            {/* <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+         {/* Removed explicit Close button in footer to rely on overlay click or link */}
+         {/* <DialogFooter>
+             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                 Close
-            </Button> */}
-         </DialogFooter>
+            </Button>
+         </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );
 }
 
-// Helper component for UserPlus icon if needed
-const UserPlus = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <line x1="19" x2="19" y1="8" y2="14" />
-    <line x1="22" x2="16" y1="11" y2="11" />
-  </svg>
-);
+
+// // Helper component for UserPlus icon if needed - replaced with lucide-react UserPlus
+// const UserPlus = (props: React.SVGProps<SVGSVGElement>) => (
+//   <svg
+//     xmlns="http://www.w3.org/2000/svg"
+//     width="24"
+//     height="24"
+//     viewBox="0 0 24 24"
+//     fill="none"
+//     stroke="currentColor"
+//     strokeWidth="2"
+//     strokeLinecap="round"
+//     strokeLinejoin="round"
+//     {...props}
+//   >
+//     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+//     <circle cx="9" cy="7" r="4" />
+//     <line x1="19" x2="19" y1="8" y2="14" />
+//     <line x1="22" x2="16" y1="11" y2="11" />
+//   </svg>
+// );
+

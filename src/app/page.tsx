@@ -17,7 +17,7 @@ import type {
     SuggestOptimalScheduleOutput,
     TaskWithoutId
 } from '@/lib/types';
-import { BrainCircuit, User as UserIcon, Loader2, LogIn, Ghost } from 'lucide-react';
+import { BrainCircuit, User as UserIconImport, Loader2, Ghost, LogIn as LogInIcon } from 'lucide-react'; // Renamed imports to avoid conflicts
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/context/auth-context'; // Import authentication hook
 import { AuthModal } from '@/components/auth-modal'; // Import authentication modal
@@ -30,9 +30,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // --- Firestore Data Fetching and Mutations ---
 
-// Fetch tasks for the logged-in user
-const fetchTasks = async (userId: string): Promise<Task[]> => {
-  if (!userId) return [];
+// Fetch tasks for the logged-in user or return empty for guests
+const fetchTasks = async (userId: string | null): Promise<Task[]> => {
+  if (!userId) return []; // Return empty array for guests/logged-out users
   // Use a consistent collection name, e.g., 'tasks' directly under 'users/{userId}'
   const tasksCol = collection(db, 'users', userId, 'tasks');
   const q = query(tasksCol); // Add ordering later if needed (e.g., orderBy('createdAt'))
@@ -58,19 +58,21 @@ const addTask = async ({ userId, taskData }: { userId: string, taskData: TaskWit
    // Convert ISO string deadline back to Firestore Timestamp if it exists
     const deadlineTimestamp = taskData.deadline ? Timestamp.fromDate(new Date(taskData.deadline)) : undefined;
 
-   await addDoc(tasksCol, {
+   const docRef = await addDoc(tasksCol, {
      ...taskData,
      deadline: deadlineTimestamp, // Store as Timestamp
      createdAt: serverTimestamp(), // Add server timestamp
      userId: userId, // Store userId with the task
    });
+    // Return the newly created task with its ID
+    return { ...taskData, id: docRef.id, userId: userId, createdAt: new Date() }; // Approximate client-side timestamp
 };
 
 // Edit a task for the logged-in user
 const editTask = async ({ userId, task }: { userId: string, task: Task }) => {
   if (!userId) throw new Error("User not logged in");
   const taskRef = doc(db, 'users', userId, 'tasks', task.id);
-  const { id, createdAt, userId: taskUserId, ...taskData } = task; // Exclude id, createdAt, userId from data to be updated
+  const { id, createdAt, userId: taskUserId, updatedAt, ...taskData } = task; // Exclude fields not to be updated directly
   // Convert ISO string deadline back to Firestore Timestamp if it exists
   const deadlineTimestamp = taskData.deadline ? Timestamp.fromDate(new Date(taskData.deadline)) : undefined;
 
@@ -79,6 +81,8 @@ const editTask = async ({ userId, task }: { userId: string, task: Task }) => {
     deadline: deadlineTimestamp, // Store as Timestamp
     updatedAt: serverTimestamp(), // Add server timestamp for updates
   });
+    // Return the updated task
+    return { ...task, updatedAt: new Date() }; // Approximate client-side timestamp
 };
 
 // Delete a task for the logged-in user
@@ -86,6 +90,7 @@ const deleteTask = async ({ userId, taskId }: { userId: string, taskId: string }
   if (!userId) throw new Error("User not logged in");
   const taskRef = doc(db, 'users', userId, 'tasks', taskId);
   await deleteDoc(taskRef);
+  return taskId; // Return the ID of the deleted task
 };
 
 
@@ -96,90 +101,200 @@ export default function Home() {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [isGuestSigningIn, setIsGuestSigningIn] = useState<boolean>(false); // State for guest sign-in loading
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
    // React Query for fetching tasks
+   // Now fetches based on user?.uid, will use key ['tasks', null] for guests
   const { data: tasks = [], isLoading: tasksLoading, error: tasksError } = useQuery<Task[], Error>({
-    queryKey: ['tasks', user?.uid], // Query key includes user ID
-    queryFn: () => fetchTasks(user?.uid ?? ''),
-    enabled: !!user && !authLoading, // Only fetch if user is logged in and auth is not loading
+    queryKey: ['tasks', user?.uid ?? null], // Use null for guest key
+    queryFn: () => fetchTasks(user?.uid ?? null),
+    enabled: !authLoading, // Fetch as soon as auth state is resolved
+     placeholderData: [], // Start with empty array while loading
   });
 
 
   // React Query Mutations for CUD operations
   const addTaskMutation = useMutation({
     mutationFn: addTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] }); // Refetch tasks on success
-      toast({ title: "Task Added", description: `New task has been added.` });
-      setSchedule(null); // Clear schedule when tasks change
+    // Optimistic update for adding tasks (optional, enhances UX)
+    onMutate: async (newTaskInfo) => {
+        await queryClient.cancelQueries({ queryKey: ['tasks', newTaskInfo.userId] });
+        const previousTasks = queryClient.getQueryData<Task[]>(['tasks', newTaskInfo.userId]) ?? [];
+        // Create a temporary task for optimistic update
+        const optimisticTask: Task = {
+            ...newTaskInfo.taskData,
+            id: `temp-${Date.now()}`, // Temporary ID
+            userId: newTaskInfo.userId,
+            createdAt: new Date().toISOString(), // Client-side timestamp
+        };
+        queryClient.setQueryData<Task[]>(['tasks', newTaskInfo.userId], [...previousTasks, optimisticTask]);
+        return { previousTasks, optimisticTask };
     },
-    onError: (error) => {
-      console.error("Error adding task:", error);
-      toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
+    onSuccess: (data, variables, context) => {
+      // Replace optimistic task with real data from server
+        if (context?.optimisticTask) {
+             queryClient.setQueryData<Task[]>(
+                ['tasks', variables.userId],
+                 (oldTasks = []) => oldTasks.map(task =>
+                    task.id === context.optimisticTask.id ? data : task // Use the 'data' returned by addTask
+                 )
+            );
+        } else {
+             // Fallback if optimistic update context is missing
+             queryClient.invalidateQueries({ queryKey: ['tasks', variables.userId] });
+        }
+
+        toast({ title: "Task Added", description: `"${data.name}" has been added.` });
+        setSchedule(null); // Clear schedule when tasks change
     },
+    onError: (error, variables, context) => {
+        console.error("Error adding task:", error);
+         // Rollback optimistic update on error
+         if (context?.previousTasks) {
+             queryClient.setQueryData(['tasks', variables.userId], context.previousTasks);
+         }
+        toast({ title: "Error", description: "Failed to add task.", variant: "destructive" });
+    },
+     onSettled: (data, error, variables) => {
+       // Always refetch after mutation settles (success or error) to ensure consistency
+       queryClient.invalidateQueries({ queryKey: ['tasks', variables.userId] });
+     },
   });
 
   const editTaskMutation = useMutation({
     mutationFn: editTask,
-    onSuccess: (_, variables) => {
-       queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] });
+     // Optimistic update for editing
+     onMutate: async (updatedTaskInfo) => {
+        await queryClient.cancelQueries({ queryKey: ['tasks', updatedTaskInfo.userId] });
+        const previousTasks = queryClient.getQueryData<Task[]>(['tasks', updatedTaskInfo.userId]) ?? [];
+        queryClient.setQueryData<Task[]>(
+          ['tasks', updatedTaskInfo.userId],
+          previousTasks.map(task => task.id === updatedTaskInfo.task.id ? updatedTaskInfo.task : task)
+        );
+        return { previousTasks };
+    },
+    onSuccess: (data, variables, context) => {
+        // No specific action needed on success if optimistic update worked,
+        // but invalidation ensures data consistency.
        toast({ title: "Task Updated", description: `"${variables.task.name}" has been updated.` });
        setSchedule(null); // Clear schedule when tasks change
     },
-     onError: (error, variables) => {
+     onError: (error, variables, context) => {
       console.error("Error updating task:", error);
+       // Rollback optimistic update on error
+        if (context?.previousTasks) {
+            queryClient.setQueryData(['tasks', variables.userId], context.previousTasks);
+        }
       toast({ title: "Error", description: `Failed to update "${variables.task.name}".`, variant: "destructive" });
     },
+      onSettled: (data, error, variables) => {
+        queryClient.invalidateQueries({ queryKey: ['tasks', variables.userId] });
+      },
   });
 
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask,
-    // Removed optimistic update logic for simplification
-    onSuccess: (_, variables) => {
-       queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] }); // Invalidate queries to refetch
+     // Optimistic update for deleting
+    onMutate: async (taskToDelete) => {
+        await queryClient.cancelQueries({ queryKey: ['tasks', taskToDelete.userId] });
+        const previousTasks = queryClient.getQueryData<Task[]>(['tasks', taskToDelete.userId]) ?? [];
+        queryClient.setQueryData<Task[]>(
+            ['tasks', taskToDelete.userId],
+            previousTasks.filter(task => task.id !== taskToDelete.taskId)
+        );
+        return { previousTasks };
+    },
+    onSuccess: (deletedTaskId, variables, context) => {
        toast({ title: "Task Deleted", description: `Task has been removed.`, variant: "destructive" });
        setSchedule(null); // Clear schedule as task list changed
     },
-    onError: (error, variables) => {
+    onError: (error, variables, context) => {
         console.error("Error deleting task:", error);
-        // We don't have the name readily available without optimistic updates/context
+         // Rollback optimistic update on error
+         if (context?.previousTasks) {
+             queryClient.setQueryData(['tasks', variables.userId], context.previousTasks);
+         }
         toast({ title: "Error", description: `Failed to delete task.`, variant: "destructive" });
     },
-    // onSettled is still useful for ensuring refetch happens regardless of error/success
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] });
+    onSettled: (data, error, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', variables.userId] });
     },
   });
 
 
   const handleAddTask = (newTaskData: TaskWithoutId) => {
+    // Allow adding tasks locally for guests, but show login prompt for saving
     if (!user) {
-        toast({ title: "Not Signed In", description: "Please sign in to add tasks.", variant: "destructive" });
-        setIsAuthModalOpen(true);
+        // Optimistically add to local React Query cache for guests
+        const optimisticTask: Task = {
+            ...newTaskData,
+            id: `temp-${Date.now()}`, // Temporary ID
+            createdAt: new Date().toISOString(), // Client-side timestamp
+        };
+         queryClient.setQueryData<Task[]>(['tasks', null], (oldTasks = []) => [...oldTasks, optimisticTask]);
+         toast({
+             title: "Task Added (Locally)",
+             description: "Sign in to save your tasks permanently.",
+             action: ( // Add action to open login modal
+                 <Button variant="outline" size="sm" onClick={() => setIsAuthModalOpen(true)}>
+                     Sign In
+                 </Button>
+             ),
+         });
+        setSchedule(null);
         return;
     }
      addTaskMutation.mutate({ userId: user.uid, taskData: newTaskData });
   };
 
   const handleEditTask = (updatedTask: Task) => {
-     if (!user) return; // Should not happen if tasks are loaded, but good practice
+     if (!user) {
+        // Optimistically update local React Query cache for guests
+        queryClient.setQueryData<Task[]>(['tasks', null], (oldTasks = []) =>
+           oldTasks.map(task => task.id === updatedTask.id ? updatedTask : task)
+        );
+        toast({ title: "Task Updated (Locally)", description: "Sign in to save changes." });
+        setSchedule(null);
+        return;
+     }
      editTaskMutation.mutate({ userId: user.uid, task: updatedTask });
   };
 
   const handleDeleteTask = (taskId: string) => {
-    if (!user) return;
+    if (!user) {
+        // Optimistically remove from local React Query cache for guests
+         queryClient.setQueryData<Task[]>(['tasks', null], (oldTasks = []) =>
+             oldTasks.filter(task => task.id !== taskId)
+         );
+        toast({ title: "Task Deleted (Locally)", variant:"destructive" });
+        setSchedule(null);
+        return;
+    }
      deleteTaskMutation.mutate({ userId: user.uid, taskId: taskId });
   };
 
   const handleGenerateSchedule = async () => {
-    if (!user) {
-        toast({ title: "Not Signed In", description: "Please sign in to generate a schedule.", variant: "destructive" });
-        setIsAuthModalOpen(true);
-        return;
+    // AI Schedule generation might still require login depending on requirements,
+    // but could potentially work with local tasks if the AI flow doesn't need user context.
+    // For now, keep the login check for generation.
+    if (!user && tasks.length > 0) { // Allow generation if guest has local tasks, but prompt to save
+       toast({
+           title: "Generate Schedule?",
+           description: "AI Schedule generated from local tasks. Sign in to save tasks & schedules.",
+           action: (
+                <Button variant="outline" size="sm" onClick={() => setIsAuthModalOpen(true)}>
+                    Sign In
+                </Button>
+            ),
+       });
+       // Proceed with generation using local tasks
+    } else if (!user && tasks.length === 0) {
+         toast({ title: "No Tasks", description: "Add some tasks before generating a schedule.", variant: "destructive" });
+         return;
     }
+
+
     if (tasks.length === 0) {
       toast({ title: "No Tasks", description: "Add some tasks before generating a schedule.", variant: "destructive" });
       return;
@@ -212,23 +327,9 @@ export default function Home() {
     }
   };
 
-  // Guest Sign In Handler directly on the page
-  const handleGuestSignIn = async () => {
-    setIsGuestSigningIn(true);
-    try {
-      await signInAnonymously(auth);
-      // No need to close modal here
-      toast({ title: 'Signed In as Guest', description: 'You are now browsing as a guest.' });
-    } catch (error: any) {
-      console.error('Error signing in anonymously:', error);
-      toast({ title: 'Guest Sign In Error', description: error.message || 'Failed to sign in as guest.', variant: 'destructive' });
-    } finally {
-      setIsGuestSigningIn(false);
-    }
-  };
 
-
-  const isLoading = authLoading || tasksLoading;
+  // Show loading spinner only during initial auth check
+  const isLoading = authLoading;
 
 
   return (
@@ -246,12 +347,12 @@ export default function Home() {
                         <Loader2 className="h-5 w-5 animate-spin" />
                     ) : user ? (
                          user.isAnonymous ? (
-                            <Ghost className="h-5 w-5" /> // Show Ghost icon for anonymous users
+                            <Ghost className="h-5 w-5" /> // Guest icon
                          ) : (
-                             <UserIcon className="h-5 w-5" /> // User icon for signed-in users
+                             <UserIconImport className="h-5 w-5" /> // User icon for signed-in users
                          )
                     ) : (
-                        <LogIn className="h-5 w-5" /> // Use imported LogIn icon for signed-out users
+                        <LogInIcon className="h-5 w-5" /> // LogIn icon for signed-out users
                     )}
                     <span className="sr-only">Account</span>
                 </Button>
@@ -259,70 +360,61 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 flex-grow">
+       {/* Main Content - Always visible */}
+       <main className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-2 gap-10 flex-grow">
            {isLoading ? (
              <div className="lg:col-span-2 flex items-center justify-center p-10">
                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
-           ) : !user ? (
-             // Show prompt to sign in or continue as guest if not logged in
-              <div className="lg:col-span-2 flex flex-col items-center justify-center text-center p-10 bg-card/70 backdrop-blur-md rounded-lg shadow-xl border border-border/40">
-                <UserIcon className="h-16 w-16 text-primary mb-4" />
-                <h2 className="text-2xl font-semibold mb-2">Welcome to DayWise!</h2>
-                <p className="text-muted-foreground mb-6">Manage your tasks and generate AI schedules. Sign in to save your data or continue as a guest.</p>
-                <div className="flex gap-4">
-                    <Button variant="gradient" onClick={() => setIsAuthModalOpen(true)}>
-                    <LogIn className="mr-2 h-4 w-4" /> Sign In / Sign Up
-                    </Button>
-                    <Button variant="secondary" onClick={handleGuestSignIn} disabled={isGuestSigningIn}>
-                        {isGuestSigningIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ghost className="mr-2 h-4 w-4" />}
-                        Continue as Guest
-                    </Button>
-                 </div>
-              </div>
            ) : (
-             // Show main content if logged in (including guests)
-             <>
-                <div className="space-y-10">
-                    <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
-                        <CardHeader>
-                        <CardTitle>Add a New Task</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <TaskForm onSubmit={handleAddTask} isSubmitting={addTaskMutation.isPending}/>
-                        </CardContent>
-                    </Card>
-
-                    <TaskList
-                        tasks={tasks}
-                        onGenerateSchedule={handleGenerateSchedule}
-                        onEditTask={handleEditTask}
-                        onDeleteTask={handleDeleteTask}
-                        isGenerating={isGenerating}
-                        isMutating={editTaskMutation.isPending || deleteTaskMutation.isPending}
-                    />
-                    {tasksError && (
-                        <p className="text-destructive text-sm">Error loading tasks: {tasksError.message}</p>
-                    )}
-                     {tasksLoading && !tasksError && (
-                        <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300">
-                            <CardHeader><CardTitle>Loading Tasks...</CardTitle></CardHeader>
-                            <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
+                <>
+                    <div className="space-y-10">
+                        <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+                            <CardHeader>
+                            <CardTitle>Add a New Task</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <TaskForm
+                                    onSubmit={handleAddTask}
+                                    isSubmitting={addTaskMutation.isPending}
+                                />
+                            </CardContent>
                         </Card>
-                    )}
-                </div>
 
-                <div className="space-y-10 lg:sticky lg:top-24 self-start">
-                    <ScheduleDisplay scheduleData={schedule} isLoading={isGenerating} />
-                </div>
-            </>
+                        <TaskList
+                            tasks={tasks}
+                            onGenerateSchedule={handleGenerateSchedule}
+                            onEditTask={handleEditTask}
+                            onDeleteTask={handleDeleteTask}
+                            isGenerating={isGenerating}
+                             isMutating={editTaskMutation.isPending || deleteTaskMutation.isPending || addTaskMutation.isPending} // Combine mutation states
+                        />
+                        {tasksError && user && ( // Only show task error if logged in user failed to load
+                            <p className="text-destructive text-sm">Error loading tasks: {tasksError.message}</p>
+                        )}
+                         {tasksLoading && !tasksError && (
+                            <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300">
+                                <CardHeader><CardTitle>Loading Tasks...</CardTitle></CardHeader>
+                                <CardContent><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    <div className="space-y-10 lg:sticky lg:top-24 self-start">
+                        <ScheduleDisplay scheduleData={schedule} isLoading={isGenerating} />
+                    </div>
+                </>
            )}
-      </main>
+       </main>
+
+
        <Toaster />
        <footer className="text-center py-4 text-muted-foreground text-sm">
          Powered by AI ✨
        </footer>
+       {/* AuthModal remains available */}
        <AuthModal open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen} />
     </div>
   );
 }
+
