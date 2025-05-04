@@ -1,6 +1,5 @@
 "use client";
 
-import type React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Clock, AlertTriangle } from 'lucide-react';
@@ -62,7 +61,7 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
           <p>No tasks to schedule. Add some tasks above!</p>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
