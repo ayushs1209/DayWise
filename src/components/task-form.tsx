@@ -130,8 +130,8 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                   {/* Reintegrate Popover and Calendar directly */}
                    <Popover>
                     <PopoverTrigger asChild>
-                       {/* FormControl now wraps the Button */}
-                      <FormControl>
+                       {/* FormControl needs asChild to correctly pass props when nested in PopoverTrigger with asChild */}
+                      <FormControl asChild>
                           <Button
                             variant={"outline"}
                             className={cn(
