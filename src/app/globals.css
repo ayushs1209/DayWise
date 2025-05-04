@@ -49,7 +49,8 @@ body {
     /* Dark Theme with Gradients */
     --background-start-hsl: 240 10% 8%; /* Dark Blue/Gray Start */
     --background-end-hsl: 260 15% 5%; /* Dark Purple/Black End */
-    --background: linear-gradient(145deg, hsl(var(--background-start-hsl)), hsl(var(--background-end-hsl))); /* Gradient Background */
+    /* Use CSS variables for gradient */
+    --background: linear-gradient(145deg, hsl(var(--background-start-hsl)), hsl(var(--background-end-hsl)));
     --foreground: 0 0% 98%; /* Near White */
     --card: 240 6% 12%; /* Slightly Lighter Dark Gray */
     --card-foreground: 0 0% 98%;

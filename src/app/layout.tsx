@@ -1,6 +1,6 @@
 import type {Metadata} from 'next';
 import { GeistSans } from 'geist/font/sans';
-// Removed GeistMono import as it's not found
+// Removed GeistMono import as it's not used after fixing the previous error
 import './globals.css';
 import { cn } from '@/lib/utils'; // Import cn utility
 import { ThemeProvider } from '@/components/theme-provider'; // Import ThemeProvider
@@ -16,7 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* Added suppressHydrationWarning */}
+    // Remove extra whitespace before <body> to prevent hydration error
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
@@ -26,9 +27,9 @@ export default function RootLayout({
       >
         <ThemeProvider
             attribute="class"
-            defaultTheme="dark"
-            enableSystem={false} // Disable system preference to default to dark
-            disableTransitionOnChange
+            defaultTheme="dark" // Default to dark theme
+            enableSystem={false} // Disable system preference detection
+            disableTransitionOnChange // Optional: Improve performance by disabling theme transition animations
           >
             {children}
           </ThemeProvider>

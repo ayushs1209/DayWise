@@ -67,11 +67,6 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
-        backgroundImage: { // Add gradient support if needed elsewhere
-          'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-          'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-          'gradient-primary': 'linear-gradient(145deg, hsl(var(--background-start-hsl)), hsl(var(--background-end-hsl)))', // Example gradient using new variables
-        },
   		keyframes: {
   			'accordion-down': {
   				from: {

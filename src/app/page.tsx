@@ -107,7 +107,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground"> {/* Updated bg-secondary to bg-background */}
+    <div className="min-h-screen bg-background text-foreground"> {/* Ensure body uses bg-background */}
       <header className="bg-primary/80 backdrop-blur-sm text-primary-foreground shadow-md sticky top-0 z-50"> {/* Adjusted header background */}
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
