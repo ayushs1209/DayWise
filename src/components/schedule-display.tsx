@@ -103,7 +103,7 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
             <XCircle className="h-5 w-5" /> {/* Using XCircle for general error */}
             <AlertTitle className="text-lg">Failed to Generate Schedule</AlertTitle>
             <AlertDescription>
-            {scheduleData.error}
+            Failed to generate schedule. Please try again. {/* Updated error message */}
             </AlertDescription>
       </Alert>
     );
@@ -193,3 +193,4 @@ export function ScheduleDisplay({ scheduleData, isLoading }: ScheduleDisplayProp
     </Card>
   );
 }
+
