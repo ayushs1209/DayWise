@@ -16,7 +16,7 @@ import type {
     SuggestOptimalScheduleOutput,
     TaskWithoutId
 } from '@/lib/types';
-import { BrainCircuit, User as UserIcon, Loader2, LogIn } from 'lucide-react'; // Renamed User icon import and added LogIn
+import { BrainCircuit, User as UserIcon, Loader2, LogIn } from 'lucide-react'; // Correctly import LogIn
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/context/auth-context'; // Import authentication hook
 import { AuthModal } from '@/components/auth-modal'; // Import authentication modal
@@ -133,31 +133,21 @@ export default function Home() {
 
   const deleteTaskMutation = useMutation({
     mutationFn: deleteTask,
-     onMutate: async (deletedTaskInfo) => {
-      // Optimistic Update: Temporarily remove the task from the UI
-      await queryClient.cancelQueries({ queryKey: ['tasks', user?.uid] });
-      const previousTasks = queryClient.getQueryData<Task[]>(['tasks', user?.uid]);
-      queryClient.setQueryData<Task[]>(['tasks', user?.uid], (old) =>
-        old?.filter((task) => task.id !== deletedTaskInfo.taskId) ?? []
-      );
-      setSchedule(null);
-      return { previousTasks };
+    // Removed optimistic update logic for simplification
+    onSuccess: (_, variables) => {
+       queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] }); // Invalidate queries to refetch
+       toast({ title: "Task Deleted", description: `Task has been removed.`, variant: "destructive" });
+       setSchedule(null); // Clear schedule as task list changed
     },
-    onError: (err, deletedTaskInfo, context) => {
-      // Rollback on error
-      queryClient.setQueryData(['tasks', user?.uid], context?.previousTasks);
-      const taskName = context?.previousTasks?.find(t => t.id === deletedTaskInfo.taskId)?.name || 'the task';
-      console.error("Error deleting task:", err);
-      toast({ title: "Error", description: `Failed to delete "${taskName}".`, variant: "destructive" });
+    onError: (error, variables) => {
+        console.error("Error deleting task:", error);
+        // We don't have the name readily available without optimistic updates/context
+        toast({ title: "Error", description: `Failed to delete task.`, variant: "destructive" });
     },
+    // onSettled is still useful for ensuring refetch happens regardless of error/success
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] });
     },
-     onSuccess: (_, variables) => {
-        // We might not have the name readily available after optimistic update + refetch completes,
-        // so use a generic message or try to get it from previous data if still needed.
-        toast({ title: "Task Deleted", description: `Task has been removed.`, variant: "destructive" });
-     }
   });
 
 
@@ -239,7 +229,7 @@ export default function Home() {
                     ) : user ? (
                          <UserIcon className="h-5 w-5" /> // Renamed import
                     ) : (
-                        <LogIn className="h-5 w-5" />
+                        <LogIn className="h-5 w-5" /> // Use imported LogIn icon
                     )}
                     <span className="sr-only">Account</span>
                 </Button>
@@ -309,3 +299,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
