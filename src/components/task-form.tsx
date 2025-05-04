@@ -4,7 +4,8 @@ import type React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { Plus, Trash2, Save } from 'lucide-react'; // Added Save icon
+import { format } from "date-fns"; // Import format
+import { Plus, Trash2, Save, CalendarIcon } from 'lucide-react'; // Added Save icon and CalendarIcon
 
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +25,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DatePicker } from '@/components/ui/date-picker';
+// Removed DatePicker import
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"; // Import Popover components
+import { Calendar } from "@/components/ui/calendar"; // Import Calendar
+import { cn } from "@/lib/utils"; // Import cn
 import type { Task } from '@/lib/types';
 
 const taskFormSchema = z.object({
@@ -117,13 +125,43 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             control={form.control}
             name="deadline"
             render={({ field }) => (
-              <FormItem className="flex flex-col justify-end"> {/* Align label better */}
-                <FormLabel>Deadline (Optional)</FormLabel>
-                <FormControl>
-                  <DatePicker date={field.value} setDate={field.onChange} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+                <FormItem className="flex flex-col justify-end"> {/* Align label better */}
+                  <FormLabel>Deadline (Optional)</FormLabel>
+                  {/* Reintegrate Popover and Calendar directly */}
+                   <Popover>
+                    <PopoverTrigger asChild>
+                       {/* FormControl now wraps the Button */}
+                      <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
             )}
           />
           <FormField
@@ -179,10 +217,8 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             type="submit"
             className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95" /* Gradient Button */
             >
-             <> {/* Wrap icon and text in a Fragment */}
-               {initialData ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-               {initialData ? 'Save Changes' : 'Add Task'}
-             </>
+             {initialData ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+             {initialData ? 'Save Changes' : 'Add Task'}
           </Button>
         </div>
       </form>
