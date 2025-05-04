@@ -16,7 +16,7 @@ import type {
     SuggestOptimalScheduleOutput,
     TaskWithoutId
 } from '@/lib/types';
-import { BrainCircuit, User as UserIcon, Loader2 } from 'lucide-react'; // Renamed User icon import
+import { BrainCircuit, User as UserIcon, Loader2, LogIn } from 'lucide-react'; // Renamed User icon import and added LogIn
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/context/auth-context'; // Import authentication hook
 import { AuthModal } from '@/components/auth-modal'; // Import authentication modal
@@ -154,8 +154,9 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ['tasks', user?.uid] });
     },
      onSuccess: (_, variables) => {
-        const deletedTaskName = queryClient.getQueryData<Task[]>(['tasks', user?.uid])?.find(t => t.id === variables.taskId)?.name || 'Task';
-        toast({ title: "Task Deleted", description: `"${deletedTaskName}" has been removed.`, variant: "destructive" });
+        // We might not have the name readily available after optimistic update + refetch completes,
+        // so use a generic message or try to get it from previous data if still needed.
+        toast({ title: "Task Deleted", description: `Task has been removed.`, variant: "destructive" });
      }
   });
 

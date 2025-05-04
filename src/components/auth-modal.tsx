@@ -12,7 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { LogIn, LogOut } from 'lucide-react';
+import { LogIn, LogOut } from 'lucide-react'; // Added LogIn import
 import { useAuth } from '@/context/auth-context'; // Import useAuth hook
 
 interface AuthModalProps {
