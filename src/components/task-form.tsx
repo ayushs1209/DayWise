@@ -15,6 +15,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField, // Import useFormField
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-// Removed DatePicker import
 import {
   Popover,
   PopoverContent,
@@ -121,50 +121,56 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
           )}
         />
         <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3"> {/* Responsive grid */}
-          <FormField
+           <FormField
             control={form.control}
             name="deadline"
-            render={({ field }) => (
+            render={({ field }) => {
+               const { formItemId, formDescriptionId, formMessageId, error } = useFormField(); // Get props from hook
+               return (
                 <FormItem className="flex flex-col justify-end"> {/* Align label better */}
-                  <FormLabel>Deadline (Optional)</FormLabel>
-                  {/* Popover for date selection */}
-                   <Popover>
-                      <PopoverTrigger asChild>
-                          <Button
+                    <FormLabel>Deadline (Optional)</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        {/* Apply form attributes directly to the Button, remove FormControl wrapper */}
+                        <Button
+                            ref={field.ref} // Pass the ref from the field
+                            id={formItemId}
+                            aria-invalid={!!error}
+                            aria-describedby={
+                                !error
+                                ? `${formDescriptionId}`
+                                : `${formDescriptionId} ${formMessageId}`
+                            }
                             variant={"outline"}
                             className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
                             )}
-                            // Pass field props directly to the underlying Button via PopoverTrigger's asChild
-                            // The {...field} props (onChange, onBlur, value, name, ref) might not all be necessary
-                            // directly on the Button if the Controller handles them, but this ensures interaction.
-                            // We specifically need `value` for display and potentially `onBlur`. `onChange` is handled by Calendar.
-                            // Let's remove {...field} and rely on Calendar's `onSelect` passed to `field.onChange`.
-                          >
+                        >
                             {field.value ? (
-                              format(field.value, "PPP")
+                            format(field.value, "PPP")
                             ) : (
-                              <span>Pick a date</span>
+                            <span>Pick a date</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                      </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange} // Controller updates the form state here
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-            )}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange} // Controller updates the form state here
+                            disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
+                            }
+                            initialFocus
+                        />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )
+            }}
           />
           <FormField
             control={form.control}
