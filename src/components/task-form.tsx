@@ -127,17 +127,20 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             render={({ field }) => (
                 <FormItem className="flex flex-col justify-end"> {/* Align label better */}
                   <FormLabel>Deadline (Optional)</FormLabel>
-                  {/* Reintegrate Popover and Calendar directly */}
+                  {/* Popover for date selection */}
                    <Popover>
-                    <PopoverTrigger asChild>
-                       {/* FormControl needs asChild to correctly pass props when nested in PopoverTrigger with asChild */}
-                      <FormControl asChild>
+                      <PopoverTrigger asChild>
                           <Button
                             variant={"outline"}
                             className={cn(
                               "w-full pl-3 text-left font-normal",
                               !field.value && "text-muted-foreground"
                             )}
+                            // Pass field props directly to the underlying Button via PopoverTrigger's asChild
+                            // The {...field} props (onChange, onBlur, value, name, ref) might not all be necessary
+                            // directly on the Button if the Controller handles them, but this ensures interaction.
+                            // We specifically need `value` for display and potentially `onBlur`. `onChange` is handled by Calendar.
+                            // Let's remove {...field} and rely on Calendar's `onSelect` passed to `field.onChange`.
                           >
                             {field.value ? (
                               format(field.value, "PPP")
@@ -146,13 +149,12 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
-                      </FormControl>
-                    </PopoverTrigger>
+                      </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value}
-                        onSelect={field.onChange}
+                        onSelect={field.onChange} // Controller updates the form state here
                         disabled={(date) =>
                           date < new Date(new Date().setHours(0, 0, 0, 0)) // Disable past dates
                         }
