@@ -17,12 +17,13 @@ import type {
     SuggestOptimalScheduleOutput,
     TaskWithoutId
 } from '@/lib/types';
-import { BrainCircuit, User as UserIcon, Loader2, LogIn, Ghost } from 'lucide-react'; // Correctly import LogIn and Ghost
+import { BrainCircuit, User as UserIcon, Loader2, LogIn, Ghost } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/context/auth-context'; // Import authentication hook
 import { AuthModal } from '@/components/auth-modal'; // Import authentication modal
 import { Button } from '@/components/ui/button';
-import { db } from '@/lib/firebase'; // Import firestore instance
+import { db, auth } from '@/lib/firebase'; // Import firestore and auth instances
+import { signInAnonymously } from 'firebase/auth'; // Import signInAnonymously
 import { collection, addDoc, updateDoc, deleteDoc, query, where, getDocs, doc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -95,6 +96,7 @@ export default function Home() {
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isGuestSigningIn, setIsGuestSigningIn] = useState<boolean>(false); // State for guest sign-in loading
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -172,7 +174,6 @@ export default function Home() {
      deleteTaskMutation.mutate({ userId: user.uid, taskId: taskId });
   };
 
-
   const handleGenerateSchedule = async () => {
     if (!user) {
         toast({ title: "Not Signed In", description: "Please sign in to generate a schedule.", variant: "destructive" });
@@ -208,6 +209,21 @@ export default function Home() {
        setSchedule(null);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Guest Sign In Handler directly on the page
+  const handleGuestSignIn = async () => {
+    setIsGuestSigningIn(true);
+    try {
+      await signInAnonymously(auth);
+      // No need to close modal here
+      toast({ title: 'Signed In as Guest', description: 'You are now browsing as a guest.' });
+    } catch (error: any) {
+      console.error('Error signing in anonymously:', error);
+      toast({ title: 'Guest Sign In Error', description: error.message || 'Failed to sign in as guest.', variant: 'destructive' });
+    } finally {
+      setIsGuestSigningIn(false);
     }
   };
 
@@ -249,14 +265,20 @@ export default function Home() {
                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
              </div>
            ) : !user ? (
-             // Show prompt to sign in if not logged in
+             // Show prompt to sign in or continue as guest if not logged in
               <div className="lg:col-span-2 flex flex-col items-center justify-center text-center p-10 bg-card/70 backdrop-blur-md rounded-lg shadow-xl border border-border/40">
                 <UserIcon className="h-16 w-16 text-primary mb-4" />
                 <h2 className="text-2xl font-semibold mb-2">Welcome to DayWise!</h2>
-                <p className="text-muted-foreground mb-6">Please sign in or continue as a guest to manage your tasks and generate schedules.</p>
-                <Button variant="gradient" onClick={() => setIsAuthModalOpen(true)}>
-                  <LogIn className="mr-2 h-4 w-4" /> Sign In / Sign Up / Guest
-                </Button>
+                <p className="text-muted-foreground mb-6">Manage your tasks and generate AI schedules. Sign in to save your data or continue as a guest.</p>
+                <div className="flex gap-4">
+                    <Button variant="gradient" onClick={() => setIsAuthModalOpen(true)}>
+                    <LogIn className="mr-2 h-4 w-4" /> Sign In / Sign Up
+                    </Button>
+                    <Button variant="secondary" onClick={handleGuestSignIn} disabled={isGuestSigningIn}>
+                        {isGuestSigningIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ghost className="mr-2 h-4 w-4" />}
+                        Continue as Guest
+                    </Button>
+                 </div>
               </div>
            ) : (
              // Show main content if logged in (including guests)
@@ -304,5 +326,3 @@ export default function Home() {
     </div>
   );
 }
-
-    

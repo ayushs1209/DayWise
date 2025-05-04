@@ -109,6 +109,8 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         errorMessage = 'Invalid email or password.';
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'This email address is already in use.';
+      } else if (error.code === 'auth/invalid-credential') { // Updated error code for Firebase v9+
+          errorMessage = 'Invalid email or password.';
       } else if (error.code) {
         errorMessage = error.message; // Use Firebase's message if available
       }
@@ -139,7 +141,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         <DialogHeader>
           <DialogTitle className="text-xl">{user ? (user.isAnonymous ? 'Guest Account' : 'Account') : 'Sign In / Sign Up'}</DialogTitle>
           <DialogDescription>
-            {user ? (user.isAnonymous ? 'You are currently browsing as a guest.' : `Signed in as ${user.displayName || user.email}`) : 'Sign in, sign up, or continue as a guest.'}
+            {user ? (user.isAnonymous ? 'You are currently browsing as a guest. Your tasks are stored locally.' : `Signed in as ${user.displayName || user.email}`) : 'Sign in, sign up, or continue as a guest.'}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -284,5 +286,3 @@ const UserPlus = (props: React.SVGProps<SVGSVGElement>) => (
     <line x1="22" x2="16" y1="11" y2="11" />
   </svg>
 );
-
-    
