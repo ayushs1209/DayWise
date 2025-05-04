@@ -1,7 +1,8 @@
 "use client";
 
 import type React from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { useState } from 'react'; // Import useState
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { List, Edit, Trash2, CalendarDays, Clock, AlertCircle, CheckCircle, XCircle, BrainCircuit } from 'lucide-react'; // Added BrainCircuit
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
+  // DialogClose, // No longer needed for programmatic close
 } from "@/components/ui/dialog";
 import { TaskForm } from './task-form'; // Import TaskForm
 
@@ -52,42 +53,44 @@ const getImportanceIcon = (importance: 'high' | 'medium' | 'low'): React.ReactNo
 };
 
 export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, isGenerating }: TaskListProps) {
+  const [editDialogOpen, setEditDialogOpen] = useState(false); // State for dialog
 
   return (
     <Card className="bg-card/85 backdrop-blur-md border border-border/50 shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
-      <CardHeader className="flex flex-row items-center justify-between pb-4"> {/* Reduced bottom padding */}
-        <CardTitle className="flex items-center text-2xl"><List className="mr-2 h-6 w-6" /> Your Tasks</CardTitle> {/* Styled title */}
-         <Button onClick={onGenerateSchedule} disabled={tasks.length === 0 || isGenerating} className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95 disabled:from-muted disabled:to-muted/80"> {/* Gradient Button */}
+      <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardTitle className="flex items-center text-2xl"><List className="mr-2 h-6 w-6" /> Your Tasks</CardTitle>
+         <Button onClick={onGenerateSchedule} disabled={tasks.length === 0 || isGenerating} className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95 disabled:from-muted disabled:to-muted/80">
           {isGenerating ? (
             <>
               <Clock className="mr-2 h-4 w-4 animate-spin" /> Generating...
             </>
           ) : (
              <>
-              <BrainCircuit className="mr-2 h-4 w-4" /> Generate Schedule {/* Added AI Icon */}
+              <BrainCircuit className="mr-2 h-4 w-4" /> Generate Schedule
              </>
           )}
         </Button>
       </CardHeader>
       <CardContent>
         {tasks.length === 0 ? (
-          <p className="py-10 text-center text-muted-foreground text-lg"> {/* Increased padding and text size */}
+          <p className="py-10 text-center text-muted-foreground text-lg">
             No tasks added yet. Use the form above to plan your day!
           </p>
         ) : (
           <div className="space-y-4">
             {tasks.map((task) => (
-              <Dialog key={task.id}>
-                 <Card className="bg-gradient-to-r from-secondary/70 to-secondary/50 shadow-md border border-border/30 transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg group"> {/* Subtle gradient and hover effect, added group for hover states */}
+              // Use controlled Dialog state
+              <Dialog key={task.id} open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                 <Card className="bg-gradient-to-r from-secondary/70 to-secondary/50 shadow-md border border-border/30 transition-transform duration-200 hover:scale-[1.02] hover:shadow-lg group">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold text-lg">{task.name}</p> {/* Larger font */}
+                        <p className="font-semibold text-lg">{task.name}</p>
                         {task.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p> {/* Limit description lines */}
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
                         )}
                       </div>
-                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"> {/* Icons appear on hover */}
+                      <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <DialogTrigger asChild>
                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
                             <Edit className="h-4 w-4" />
@@ -100,8 +103,8 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                          </Button>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"> {/* Increased top margin and gap */}
-                       <Badge variant={getImportanceBadgeVariant(task.importance)} className="flex items-center px-2.5 py-1 shadow-sm"> {/* Increased padding, added shadow */}
+                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                       <Badge variant={getImportanceBadgeVariant(task.importance)} className="flex items-center px-2.5 py-1 shadow-sm">
                         {getImportanceIcon(task.importance)}
                         {task.importance.charAt(0).toUpperCase() + task.importance.slice(1)}
                       </Badge>
@@ -113,27 +116,19 @@ export function TaskList({ tasks, onGenerateSchedule, onEditTask, onDeleteTask, 
                   </CardContent>
                 </Card>
 
-                 <DialogContent className="bg-card/95 backdrop-blur-md border border-border/60 shadow-xl"> {/* Enhanced dialog style */}
+                 <DialogContent className="bg-card/95 backdrop-blur-md border border-border/60 shadow-xl">
                   <DialogHeader>
-                    <DialogTitle className="text-xl">Edit Task</DialogTitle> {/* Larger title */}
+                    <DialogTitle className="text-xl">Edit Task</DialogTitle>
                   </DialogHeader>
                   {/* Pass down handlers and initial data */}
                   <TaskForm
                     onSubmit={(updatedTask) => {
                       onEditTask(updatedTask);
-                      // Find the close button and click it programmatically
-                      const closeButton = document.querySelector('[data-radix-dialog-close]');
-                      if (closeButton instanceof HTMLElement) {
-                        closeButton.click();
-                      }
+                      setEditDialogOpen(false); // Close dialog on successful submit
                     }}
                     onDelete={(taskId) => {
                       onDeleteTask(taskId);
-                       // Find the close button and click it programmatically
-                      const closeButton = document.querySelector('[data-radix-dialog-close]');
-                      if (closeButton instanceof HTMLElement) {
-                        closeButton.click();
-                      }
+                      setEditDialogOpen(false); // Close dialog on successful delete
                     }}
                     initialData={task}
                   />

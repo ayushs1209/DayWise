@@ -177,7 +177,10 @@ export function TaskForm({ onSubmit, onDelete, initialData }: TaskFormProps) {
             type="submit"
             className="bg-gradient-to-r from-primary to-accent text-primary-foreground hover:from-primary/90 hover:to-accent/90 shadow-md transition-all duration-200 hover:shadow-lg active:scale-95" /* Gradient Button */
             >
-             {initialData ? <><Save className="mr-2 h-4 w-4" /> Save Changes</> : <><Plus className="mr-2 h-4 w-4" /> Add Task</>}
+             <> {/* Wrap icon and text in a Fragment */}
+               {initialData ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+               {initialData ? 'Save Changes' : 'Add Task'}
+             </>
           </Button>
         </div>
       </form>
